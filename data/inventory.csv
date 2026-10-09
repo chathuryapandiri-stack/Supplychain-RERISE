@@ -1,0 +1,4 @@
+item_id,item_name,location,current_stock,safety_stock,daily_burn_rate,runout_days,holding_cost_per_day,stockout_penalty_per_unit,unit
+MCU-900,MCU-900 Control Chipset,Plant Alpha (Central),900,450,450,2.0,0.85,110.0,Units
+CH-10,Enclosure Chassis CH-10,Plant Alpha (Central),2500,800,450,5.5,0.35,45.0,Units
+FG-500,Finished IoT Gateway G-500,DC East / DC West,350,500,420,0.8,1.5,140.0,Units

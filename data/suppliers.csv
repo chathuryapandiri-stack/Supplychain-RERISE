@@ -1,0 +1,5 @@
+supplier_id,name,tier,component,status,daily_capacity,unit_cost,std_lead_time_days,expedite_lead_time_days,std_freight_cost,expedite_freight_cost,reliability_score,risk_index,is_critical
+SUP-A,Apex Microelectronics (Primary),1,MCU-900 Control Chipset,DISRUPTED (7-Day Shutdown),500,45.0,3,2,4.5,14.0,0.98,0.89,True
+SUP-B,Beacon Tech Solutions (Backup 1),1,MCU-900 Control Chipset,OPERATIONAL,350,58.0,5,2,6.0,16.5,0.92,0.18,False
+SUP-C,Crestline Components (Backup 2),1,MCU-900 Control Chipset,OPERATIONAL,300,64.0,4,2,5.5,15.0,0.96,0.12,False
+SUP-D,Delta Raw Forge (Chassis),2,Enclosure Chassis CH-10,OPERATIONAL,600,22.0,2,1,3.0,8.0,0.99,0.05,False

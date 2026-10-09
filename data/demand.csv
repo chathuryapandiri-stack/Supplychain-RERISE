@@ -1,0 +1,43 @@
+day,customer_id,customer_name,tier,demand_units,sla_penalty_per_unit
+1,CUST-T1,MediCare Systems (Tier 1 Priority),1,155,180.0
+1,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,177,105.0
+1,CUST-T3,Global Retail Corp (Tier 3 Standard),3,110,55.0
+2,CUST-T1,MediCare Systems (Tier 1 Priority),1,149,180.0
+2,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,171,105.0
+2,CUST-T3,Global Retail Corp (Tier 3 Standard),3,107,55.0
+3,CUST-T1,MediCare Systems (Tier 1 Priority),1,156,180.0
+3,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,178,105.0
+3,CUST-T3,Global Retail Corp (Tier 3 Standard),3,112,55.0
+4,CUST-T1,MediCare Systems (Tier 1 Priority),1,164,180.0
+4,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,187,105.0
+4,CUST-T3,Global Retail Corp (Tier 3 Standard),3,117,55.0
+5,CUST-T1,MediCare Systems (Tier 1 Priority),1,149,180.0
+5,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,170,105.0
+5,CUST-T3,Global Retail Corp (Tier 3 Standard),3,106,55.0
+6,CUST-T1,MediCare Systems (Tier 1 Priority),1,149,180.0
+6,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,170,105.0
+6,CUST-T3,Global Retail Corp (Tier 3 Standard),3,106,55.0
+7,CUST-T1,MediCare Systems (Tier 1 Priority),1,164,180.0
+7,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,188,105.0
+7,CUST-T3,Global Retail Corp (Tier 3 Standard),3,117,55.0
+8,CUST-T1,MediCare Systems (Tier 1 Priority),1,157,180.0
+8,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,180,105.0
+8,CUST-T3,Global Retail Corp (Tier 3 Standard),3,112,55.0
+9,CUST-T1,MediCare Systems (Tier 1 Priority),1,147,180.0
+9,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,168,105.0
+9,CUST-T3,Global Retail Corp (Tier 3 Standard),3,105,55.0
+10,CUST-T1,MediCare Systems (Tier 1 Priority),1,155,180.0
+10,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,177,105.0
+10,CUST-T3,Global Retail Corp (Tier 3 Standard),3,111,55.0
+11,CUST-T1,MediCare Systems (Tier 1 Priority),1,147,180.0
+11,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,168,105.0
+11,CUST-T3,Global Retail Corp (Tier 3 Standard),3,105,55.0
+12,CUST-T1,MediCare Systems (Tier 1 Priority),1,147,180.0
+12,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,168,105.0
+12,CUST-T3,Global Retail Corp (Tier 3 Standard),3,105,55.0
+13,CUST-T1,MediCare Systems (Tier 1 Priority),1,153,180.0
+13,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,174,105.0
+13,CUST-T3,Global Retail Corp (Tier 3 Standard),3,109,55.0
+14,CUST-T1,MediCare Systems (Tier 1 Priority),1,134,180.0
+14,CUST-T2,Apex Telecom (Tier 2 Enterprise),2,153,105.0
+14,CUST-T3,Global Retail Corp (Tier 3 Standard),3,96,55.0
