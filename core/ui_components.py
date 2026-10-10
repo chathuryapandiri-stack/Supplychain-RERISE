@@ -8,6 +8,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
+import numpy as np
 from typing import Dict, Any, List
 
 def apply_custom_css():
@@ -539,11 +540,14 @@ def build_three_echelon_network_fig(disrupted_supplier: str = "SUP-A", plan=None
     """
     allocs_by_sup = {}
     air_by_sup = {}
+    std_by_sup = {}
     if plan and hasattr(plan, "allocations"):
         for a in plan.allocations:
             allocs_by_sup[a.supplier_id] = allocs_by_sup.get(a.supplier_id, 0) + a.allocated_units
             if "EXPEDITED" in a.shipping_mode:
                 air_by_sup[a.supplier_id] = air_by_sup.get(a.supplier_id, 0) + a.allocated_units
+            else:
+                std_by_sup[a.supplier_id] = std_by_sup.get(a.supplier_id, 0) + a.allocated_units
 
     # Dynamic runway calculation
     runway_val = 2.08
@@ -564,7 +568,7 @@ def build_three_echelon_network_fig(disrupted_supplier: str = "SUP-A", plan=None
             line=dict(color="#161D29", width=1, dash="dot"),
             hoverinfo="none", showlegend=False
         ))
-    for gx in [0.12, 0.50, 0.88]:
+    for gx in [0.14, 0.50, 0.86]:
         fig.add_trace(go.Scatter(
             x=[gx, gx], y=[0.05, 0.95], mode="lines",
             line=dict(color="#161D29", width=1, dash="dot"),
@@ -574,26 +578,30 @@ def build_three_echelon_network_fig(disrupted_supplier: str = "SUP-A", plan=None
     # Extract suppliers list from suppliers_df
     sup_list = []
     if suppliers_df is not None and not suppliers_df.empty:
-        t1 = suppliers_df[suppliers_df["tier"] == 1]
-        sup_list = t1.to_dict(orient="records") if not t1.empty else suppliers_df.to_dict(orient="records")
+        sup_list = suppliers_df.to_dict(orient="records")
     else:
         sup_list = [
             {"supplier_id": "SUP-A", "name": "Apex Microelectronics (Primary)", "daily_capacity": 500},
             {"supplier_id": "SUP-B", "name": "Beacon Tech Solutions (Backup 1)", "daily_capacity": 350},
-            {"supplier_id": "SUP-C", "name": "Crestline Components (Backup 2)", "daily_capacity": 300}
+            {"supplier_id": "SUP-C", "name": "Crestline Components (Backup 2)", "daily_capacity": 300},
+            {"supplier_id": "SUP-D", "name": "Delta Raw Forge (Chassis)", "daily_capacity": 600}
         ]
 
     # Assign vertical positions to suppliers
     n_sup = len(sup_list)
-    y_coords = np.linspace(0.76, 0.24, n_sup) if n_sup > 1 else [0.50]
+    y_coords = np.linspace(0.82, 0.18, n_sup) if n_sup > 1 else [0.50]
     
     nodes = []
+    lane_annotations = []
+
     for idx, s in enumerate(sup_list):
         sid = s["supplier_id"]
-        sname = s.get("name", sid).split("(")[0].strip()
+        raw_name = s.get("supplier_name", s.get("name", sid))
+        sname = raw_name.split("(")[0].strip()
         y_pos = y_coords[idx]
         is_disrupted = (sid == disrupted_supplier)
         alloc_qty = allocs_by_sup.get(sid, 0)
+        daily_cap = s.get("daily_capacity", 300)
         
         if is_disrupted:
             # Disrupted Supplier Route to Plant (Red dashed line)
@@ -605,82 +613,125 @@ def build_three_echelon_network_fig(disrupted_supplier: str = "SUP-A", plan=None
                 hovertext=f"<b>PRIMARY VENDOR: {sname.upper()} ({sid}) -> PLANT ALPHA</b><br>Status: DISRUPTED OUTAGE<br>Flow: 0 Units/Day",
                 showlegend=False
             ))
+            # Midpoint lane annotation
+            mid_x = (0.14 + 0.50) / 2
+            mid_y = (y_pos + 0.50) / 2
+            lane_annotations.append(dict(
+                x=mid_x - 0.03, y=mid_y,
+                text="<b>[OUTAGE: 0 u]</b>",
+                font=dict(color="#EF4444", size=8.5, family="Inter"),
+                showarrow=False,
+                bgcolor="rgba(28, 20, 30, 0.8)",
+                bordercolor="#EF4444", borderpad=2, borderwidth=1
+            ))
             nodes.append({
                 "id": sid,
-                "label": f"{sname} ({sid})<br><span style='color:#EF4444;'>SHUTDOWN [0 u]</span>",
+                "label": f"<b>{sname} ({sid})</b><br>SHUTDOWN [0 u/d]",
                 "x": 0.14, "y": y_pos, "sym": "circle-x",
-                "color": "#1C141E", "border": "#EF4444", "size": 22,
+                "color": "#1C141E", "border": "#EF4444", "size": 24,
                 "desc": f"Disrupted Supplier: {sname} (Offline)"
             })
         else:
             # Active Backup Route to Plant
             has_air = air_by_sup.get(sid, 0) > 0
-            route_color = "#A855F7" if has_air else "#06B6D4"
-            route_width = 3.6 if alloc_qty > 0 else 1.8
+            has_std = std_by_sup.get(sid, 0) > 0
+            route_color = "#A855F7" if has_air else ("#06B6D4" if has_std else "#475569")
+            route_width = 3.6 if alloc_qty > 0 else 1.6
             dash_style = "solid" if alloc_qty > 0 else "dot"
-            mode_desc = "Air Expedite + Ground" if has_air else "Standard Freight"
+            mode_desc = "Air Expedited + Ground" if (has_air and has_std) else ("Air Expedited" if has_air else ("Standard Freight" if has_std else "Standby"))
             
             fig.add_trace(go.Scatter(
                 x=[0.14, 0.50], y=[y_pos, 0.50],
                 mode="lines",
                 line=dict(color=route_color, width=route_width, dash=dash_style),
                 hoverinfo="text",
-                hovertext=f"<b>BACKUP ROUTE: {sname.upper()} ({sid}) -> PLANT ALPHA</b><br>Mode: {mode_desc}<br>Allocated: {alloc_qty:,} Units",
+                hovertext=f"<b>BACKUP ROUTE: {sname.upper()} ({sid}) -> PLANT ALPHA</b><br>Mode: {mode_desc}<br>Allocated: {alloc_qty:,} Units<br>Capacity: {daily_cap} u/d",
                 showlegend=False
             ))
-            alloc_tag = f"<span style='color:{route_color};'>ALLOC [{alloc_qty:,} u]</span>" if alloc_qty > 0 else "<span style='color:#64748B;'>STANDBY</span>"
+            
+            # Midpoint lane annotation if allocated
+            if alloc_qty > 0:
+                mid_x = (0.14 + 0.50) / 2
+                mid_y = (y_pos + 0.50) / 2
+                badge_text = f"<b>AIR: {alloc_qty:,} u</b>" if has_air else f"<b>STD: {alloc_qty:,} u</b>"
+                lane_annotations.append(dict(
+                    x=mid_x - 0.03, y=mid_y,
+                    text=badge_text,
+                    font=dict(color=route_color, size=8.5, family="Inter"),
+                    showarrow=False,
+                    bgcolor="rgba(15, 23, 42, 0.85)",
+                    bordercolor=route_color, borderpad=2, borderwidth=1
+                ))
+
+            status_tag = f"ALLOC: {alloc_qty:,} u" if alloc_qty > 0 else f"STANDBY ({daily_cap} u/d)"
             nodes.append({
                 "id": sid,
-                "label": f"{sname} ({sid})<br>{alloc_tag}",
+                "label": f"<b>{sname} ({sid})</b><br>{status_tag}",
                 "x": 0.14, "y": y_pos, "sym": "circle",
-                "color": "#1A1426" if has_air else "#121F29",
+                "color": "#1A1426" if has_air else ("#121F29" if has_std else "#0F172A"),
                 "border": route_color, "size": 22,
-                "desc": f"Alternative Supplier: {sname} ({s.get('daily_capacity', 300)} u/d capacity)"
+                "desc": f"Supplier: {sname} ({daily_cap} u/d capacity)"
             })
 
     # Outbound Fulfillment: Plant Alpha -> DC East (Tier 1 Priority 100%)
     fig.add_trace(go.Scatter(
         x=[0.50, 0.86], y=[0.50, 0.72],
         mode="lines",
-        line=dict(color="#10B981", width=2.8),
+        line=dict(color="#10B981", width=3.2),
         hoverinfo="text",
-        hovertext="<b>OUTBOUND: PLANT ALPHA -> DC EAST</b><br>Tier-1 Healthcare & Defense: 100% Guaranteed SLA<br>Zero Backorders",
+        hovertext="<b>OUTBOUND: PLANT ALPHA -> DC EAST</b><br>Tier-1 Healthcare & Defense: 100% Guaranteed SLA<br>Zero Critical Backorders",
         showlegend=False
+    ))
+    lane_annotations.append(dict(
+        x=(0.50 + 0.86) / 2 + 0.03, y=(0.50 + 0.72) / 2,
+        text="<b>TIER-1: 100% SLA</b>",
+        font=dict(color="#10B981", size=8.5, family="Inter"),
+        showarrow=False,
+        bgcolor="rgba(19, 33, 29, 0.85)",
+        bordercolor="#10B981", borderpad=2, borderwidth=1
     ))
 
     # Outbound Fulfillment: Plant Alpha -> DC West (Commercial Tier 2 & 3)
-    fill_rate_display = f"{plan.fulfillment_rate:.1f}%" if plan else "94.2%"
+    fill_rate_display = f"{plan.fulfillment_rate:.1f}%" if plan else "95.5%"
     fig.add_trace(go.Scatter(
         x=[0.50, 0.86], y=[0.50, 0.28],
         mode="lines",
-        line=dict(color="#64748B", width=2.2),
+        line=dict(color="#38BDF8", width=2.4),
         hoverinfo="text",
         hovertext=f"<b>OUTBOUND: PLANT ALPHA -> DC WEST</b><br>Tier-2 & Tier-3 Fulfillment: {fill_rate_display} Service Level",
         showlegend=False
+    ))
+    lane_annotations.append(dict(
+        x=(0.50 + 0.86) / 2 + 0.03, y=(0.50 + 0.28) / 2,
+        text=f"<b>COMMERCIAL: {fill_rate_display}</b>",
+        font=dict(color="#38BDF8", size=8.5, family="Inter"),
+        showarrow=False,
+        bgcolor="rgba(21, 27, 38, 0.85)",
+        bordercolor="#38BDF8", borderpad=2, borderwidth=1
     ))
 
     # Plant Alpha and Distribution Hub Nodes
     nodes.extend([
         {
             "id": "PLANT-A",
-            "label": f"Assembly Plant Alpha<br><span style='color:#F59E0B;'>RUNWAY: {runway_val} DAYS</span>",
+            "label": f"<b>Assembly Plant Alpha</b><br>RUNWAY: {runway_val} DAYS",
             "x": 0.50, "y": 0.50, "sym": "square",
-            "color": "#201A15", "border": "#F59E0B", "size": 26,
+            "color": "#201A15", "border": "#F59E0B", "size": 28,
             "desc": "Central Manufacturing Facility"
         },
         {
             "id": "DC-EAST",
-            "label": "DC East (Regional Hub)<br><span style='color:#10B981;'>TIER-1 SLA: 100%</span>",
+            "label": "<b>DC East (Regional)</b><br>TIER-1 SLA: 100%",
             "x": 0.86, "y": 0.72, "sym": "diamond",
-            "color": "#13211D", "border": "#10B981", "size": 22,
-            "desc": "Healthcare & Critical Infrastructure Fulfillment"
+            "color": "#13211D", "border": "#10B981", "size": 24,
+            "desc": "Healthcare & Critical Infrastructure Hub"
         },
         {
             "id": "DC-WEST",
-            "label": f"DC West (Regional Hub)<br><span style='color:#94A3B8;'>SERVICE: {fill_rate_display}</span>",
+            "label": f"<b>DC West (Regional)</b><br>FILL: {fill_rate_display}",
             "x": 0.86, "y": 0.28, "sym": "diamond",
-            "color": "#151B26", "border": "#64748B", "size": 22,
-            "desc": "Enterprise Telecom & Commercial Fulfillment"
+            "color": "#151B26", "border": "#38BDF8", "size": 24,
+            "desc": "Enterprise & Commercial Hub"
         }
     ])
 
@@ -696,32 +747,36 @@ def build_three_echelon_network_fig(disrupted_supplier: str = "SUP-A", plan=None
         ),
         text=ndf["label"],
         textposition="top center",
-        textfont=dict(color="#F1F5F9", size=9.5, family="Inter"),
+        textfont=dict(color="#F1F5F9", size=9.2, family="Inter"),
         hoverinfo="text",
         hovertext=[f"<b>{n['id']}</b><br>{n['desc']}" for n in nodes],
         showlegend=False
     ))
 
     # Echelon Column Labels
-    fig.add_annotation(x=0.14, y=0.98, text="<b>ECHELON 1: SUPPLIERS</b>", showarrow=False, font=dict(color="#64748B", size=9.5, family="Inter"))
-    fig.add_annotation(x=0.50, y=0.98, text="<b>ECHELON 2: MANUFACTURING</b>", showarrow=False, font=dict(color="#64748B", size=9.5, family="Inter"))
-    fig.add_annotation(x=0.86, y=0.98, text="<b>ECHELON 3: DISTRIBUTION</b>", showarrow=False, font=dict(color="#64748B", size=9.5, family="Inter"))
+    fig.add_annotation(x=0.14, y=0.99, text="<b>ECHELON 1: SUPPLIERS</b>", showarrow=False, font=dict(color="#94A3B8", size=10, family="Inter"))
+    fig.add_annotation(x=0.50, y=0.99, text="<b>ECHELON 2: MANUFACTURING</b>", showarrow=False, font=dict(color="#94A3B8", size=10, family="Inter"))
+    fig.add_annotation(x=0.86, y=0.99, text="<b>ECHELON 3: DISTRIBUTION</b>", showarrow=False, font=dict(color="#94A3B8", size=10, family="Inter"))
 
-    # Symmetrical Legend Bar
+    # Add all lane annotations
+    for ann in lane_annotations:
+        fig.add_annotation(**ann)
+
+    # Symmetrical Legend Bar at Bottom
     fig.add_annotation(
-        x=0.5, y=-0.04,
-        text="● <span style='color:#EF4444;'>Disrupted Lane (0 Flow)</span> &nbsp;&nbsp;|&nbsp;&nbsp; ● <span style='color:#A855F7;'>Air Expedited Route</span> &nbsp;&nbsp;|&nbsp;&nbsp; ● <span style='color:#06B6D4;'>Dual-Source Standard</span> &nbsp;&nbsp;|&nbsp;&nbsp; ■ <span style='color:#F59E0B;'>Assembly Facility</span> &nbsp;&nbsp;|&nbsp;&nbsp; ◆ <span style='color:#10B981;'>DC Hub</span>",
+        x=0.5, y=-0.06,
+        text="<span style='color:#EF4444;'>[OUTAGE] Disrupted Lane (0 Flow)</span> &nbsp;&nbsp;|&nbsp;&nbsp; <span style='color:#A855F7;'>[AIR] Expedited Route</span> &nbsp;&nbsp;|&nbsp;&nbsp; <span style='color:#06B6D4;'>[STD] Standard Freight</span> &nbsp;&nbsp;|&nbsp;&nbsp; <span style='color:#F59E0B;'>[PLANT] Assembly Facility</span> &nbsp;&nbsp;|&nbsp;&nbsp; <span style='color:#10B981;'>[DC-E] Healthcare Hub</span> &nbsp;&nbsp;|&nbsp;&nbsp; <span style='color:#38BDF8;'>[DC-W] Commercial Hub</span>",
         showarrow=False,
         font=dict(color="#94A3B8", size=9.5, family="Inter"),
         xref="paper", yref="paper"
     )
 
     fig.update_layout(
-        height=350,
+        height=380,
         autosize=True,
-        margin=dict(l=15, r=15, t=25, b=25),
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.02, 1.02]),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0.08, 1.04]),
+        margin=dict(l=15, r=15, t=25, b=35),
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.04, 1.04]),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0.05, 1.05]),
         plot_bgcolor="#080A0F",
         paper_bgcolor="#080A0F"
     )

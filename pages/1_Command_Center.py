@@ -675,27 +675,31 @@ st.plotly_chart(fig_net, use_container_width=True, config={"displayModeBar": Fal
 stage_c1, stage_c2, stage_c3 = st.columns(3)
 
 with stage_c1:
+    disrupted_count = len(sup_df[sup_df['supplier_id'] == disrupted_id]) if 'supplier_id' in sup_df.columns else 1
+    chip_class = "chip-red" if disrupted_count > 0 else "chip-green"
+    chip_text = f"{disrupted_count} CRITICAL OUTAGE" if disrupted_count > 0 else "NOMINAL FLOW"
+
     sup_rows_html = "".join([
         f"""<div class="cc-stage-metric-row">
-            <span class="cc-stage-metric-label">{s['name'].split('(')[0]}:</span>
-            <span class="cc-stage-metric-val" style="color:{'#EF4444' if s['supplier_id'] == disrupted_id else '#10B981'};">
-                {'SHUTDOWN' if s['supplier_id'] == disrupted_id else f"Active ({s['daily_capacity']} u/d)"}
+            <span class="cc-stage-metric-label">{s.get('name', s.get('supplier_name', s.get('supplier_id', 'Supplier'))).split('(')[0].strip()}:</span>
+            <span class="cc-stage-metric-val" style="color:{'#EF4444' if s.get('supplier_id') == disrupted_id else '#10B981'};">
+                {'SHUTDOWN' if s.get('supplier_id') == disrupted_id else f"Active ({s.get('daily_capacity', 0)} u/d)"}
             </span>
         </div>"""
-        for s in sup_df.to_dict(orient="records")[:3]
+        for s in sup_df.to_dict(orient="records")
     ])
     
     st.markdown(f"""
     <div class="cc-stage-card">
         <div class="cc-stage-header">
             <span class="cc-stage-title">Stage 1: Suppliers</span>
-            <span class="ops-status-chip chip-red">1 CRITICAL OUTAGE</span>
+            <span class="ops-status-chip {chip_class}">{chip_text}</span>
         </div>
         <div class="cc-stage-body">
             {sup_rows_html}
-            <div class="cc-stage-metric-row">
+            <div class="cc-stage-metric-row" style="margin-top:4px; padding-top:4px; border-top:1px solid #161F30;">
                 <span class="cc-stage-metric-label">Available Backup Capacity:</span>
-                <span class="cc-stage-metric-val" style="color:#06B6D4;">{total_backup_cap} Units/Day</span>
+                <span class="cc-stage-metric-val" style="color:#06B6D4;">{total_backup_cap:,} Units/Day</span>
             </div>
         </div>
     </div>
