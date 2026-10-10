@@ -9,7 +9,7 @@ import pandas as pd
 from groq import Groq
 
 DEFAULT_GROQ_API_KEY = ""
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", DEFAULT_GROQ_API_KEY)
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 # Primary & Fallback Groq Models available on this account
 PRIMARY_MODEL = "qwen/qwen3.8-27b"
@@ -17,7 +17,7 @@ FALLBACK_MODEL = "openai/gpt-oss-20b"
 
 def get_groq_client() -> Groq:
     """Initializes and returns the Groq client with the configured API key."""
-    api_key = os.environ.get("GROQ_API_KEY", DEFAULT_GROQ_API_KEY)
+    api_key = os.environ.get("GROQ_API_KEY", "")
     return Groq(api_key=api_key)
 
 def build_system_context_prompt(session_state_dict: Dict[str, Any]) -> str:
