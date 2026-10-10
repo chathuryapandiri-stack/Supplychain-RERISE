@@ -68,10 +68,23 @@ class SupplyChainOptimizer:
         disrupted_id = scenario.disrupted_supplier_id
         
         # Apply capacity overrides if present
-        if scenario.supplier_b_capacity_override is not None and "SUP-B" in sup_df["supplier_id"].values:
-            sup_df.loc[sup_df["supplier_id"] == "SUP-B", "daily_capacity"] = scenario.supplier_b_capacity_override
-        if scenario.supplier_c_capacity_override is not None and "SUP-C" in sup_df["supplier_id"].values:
-            sup_df.loc[sup_df["supplier_id"] == "SUP-C", "daily_capacity"] = scenario.supplier_c_capacity_override
+        if getattr(scenario, "supplier_capacity_overrides", None):
+            for sid, cap in scenario.supplier_capacity_overrides.items():
+                if sid in sup_df["supplier_id"].values:
+                    sup_df.loc[sup_df["supplier_id"] == sid, "daily_capacity"] = cap
+
+        candidate_sups = sup_df[sup_df["supplier_id"] != disrupted_id]
+        if scenario.supplier_b_capacity_override is not None:
+            if "SUP-B" in sup_df["supplier_id"].values and disrupted_id != "SUP-B":
+                sup_df.loc[sup_df["supplier_id"] == "SUP-B", "daily_capacity"] = scenario.supplier_b_capacity_override
+            elif len(candidate_sups) >= 1:
+                sup_df.loc[sup_df["supplier_id"] == candidate_sups.iloc[0]["supplier_id"], "daily_capacity"] = scenario.supplier_b_capacity_override
+
+        if scenario.supplier_c_capacity_override is not None:
+            if "SUP-C" in sup_df["supplier_id"].values and disrupted_id != "SUP-C":
+                sup_df.loc[sup_df["supplier_id"] == "SUP-C", "daily_capacity"] = scenario.supplier_c_capacity_override
+            elif len(candidate_sups) >= 2:
+                sup_df.loc[sup_df["supplier_id"] == candidate_sups.iloc[1]["supplier_id"], "daily_capacity"] = scenario.supplier_c_capacity_override
 
         dem_df = self.demand_df.copy()
         if scenario.demand_shock_pct != 0:

@@ -13,6 +13,7 @@ class DisruptionScenario:
     demand_shock_pct: float = 0.0     # +/- % shift in customer demand
     supplier_b_capacity_override: Optional[int] = None
     supplier_c_capacity_override: Optional[int] = None
+    supplier_capacity_overrides: Dict[str, int] = field(default_factory=dict)
     expedite_available: bool = True
 
 @dataclass

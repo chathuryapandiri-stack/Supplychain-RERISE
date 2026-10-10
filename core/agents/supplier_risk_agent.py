@@ -17,11 +17,24 @@ class SupplierRiskAgent:
     def analyze(self, scenario: DisruptionScenario, required_units: int) -> Dict[str, Any]:
         df = self.suppliers_df.copy()
         
-        # Apply overrides if scenario specifies
-        if scenario.supplier_b_capacity_override is not None and "SUP-B" in df["supplier_id"].values:
-            df.loc[df["supplier_id"] == "SUP-B", "daily_capacity"] = scenario.supplier_b_capacity_override
-        if scenario.supplier_c_capacity_override is not None and "SUP-C" in df["supplier_id"].values:
-            df.loc[df["supplier_id"] == "SUP-C", "daily_capacity"] = scenario.supplier_c_capacity_override
+        # Apply capacity overrides if scenario specifies
+        if getattr(scenario, "supplier_capacity_overrides", None):
+            for sid, cap in scenario.supplier_capacity_overrides.items():
+                if sid in df["supplier_id"].values:
+                    df.loc[df["supplier_id"] == sid, "daily_capacity"] = cap
+
+        candidate_sups = df[df["supplier_id"] != scenario.disrupted_supplier_id]
+        if scenario.supplier_b_capacity_override is not None:
+            if "SUP-B" in df["supplier_id"].values and scenario.disrupted_supplier_id != "SUP-B":
+                df.loc[df["supplier_id"] == "SUP-B", "daily_capacity"] = scenario.supplier_b_capacity_override
+            elif len(candidate_sups) >= 1:
+                df.loc[df["supplier_id"] == candidate_sups.iloc[0]["supplier_id"], "daily_capacity"] = scenario.supplier_b_capacity_override
+
+        if scenario.supplier_c_capacity_override is not None:
+            if "SUP-C" in df["supplier_id"].values and scenario.disrupted_supplier_id != "SUP-C":
+                df.loc[df["supplier_id"] == "SUP-C", "daily_capacity"] = scenario.supplier_c_capacity_override
+            elif len(candidate_sups) >= 2:
+                df.loc[df["supplier_id"] == candidate_sups.iloc[1]["supplier_id"], "daily_capacity"] = scenario.supplier_c_capacity_override
             
         disrupted_id = scenario.disrupted_supplier_id
         
