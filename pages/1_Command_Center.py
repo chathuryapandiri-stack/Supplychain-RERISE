@@ -127,188 +127,225 @@ total_replenished = alloc_air_total + alloc_std_total
 # =========================================================================
 st.markdown("""
 <style>
-/* Command Center Scoped Tokens */
+/* =========================================================================
+   MINIMAL DARK ENTERPRISE DESIGN SYSTEM (COMMAND CENTER)
+   Professional · Calm · Data-focused
+   Tokens: Background #0D1117 | Surfaces #161B22 | Border #30363D
+           Text #F0F6FC | Secondary #8B949E | Accent #388BFD | Alert #F85149
+   ========================================================================= */
+
+/* Header Container */
 .cc-header-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #0A0E18;
-    border: 1px solid #1A2436;
-    border-radius: 8px;
-    padding: 14px 20px;
-    margin-bottom: 16px;
+    background: #161B22;
+    border: 1px solid #30363D;
+    border-radius: 6px;
+    padding: 12px 18px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
     gap: 12px;
 }
 .cc-header-title-block {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-}
-.cc-header-badge {
-    display: inline-block;
-    font-size: 0.65rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    color: #A855F7;
-    text-transform: uppercase;
+    gap: 2px;
 }
 .cc-header-title {
-    font-size: 1.45rem;
-    font-weight: 800;
-    color: #F8FAFC;
-    letter-spacing: -0.02em;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #F0F6FC;
+    letter-spacing: -0.01em;
     margin: 0;
     padding: 0;
 }
 .cc-header-subtitle {
-    font-size: 0.80rem;
-    color: #94A3B8;
+    font-size: 0.76rem;
+    color: #8B949E;
     margin: 0;
     padding: 0;
 }
 .cc-header-meta-block {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 .cc-meta-pill {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #111827;
-    border: 1px solid #1F293D;
-    border-radius: 6px;
-    padding: 5px 10px;
-    font-size: 0.72rem;
-    color: #CBD5E1;
+    background: #0D1117;
+    border: 1px solid #30363D;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.70rem;
+    color: #C9D1D9;
 }
 .cc-meta-pill .label {
-    color: #64748B;
-    font-weight: 700;
+    color: #8B949E;
+    font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.65rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.03em;
 }
 .cc-meta-pill .value {
-    color: #F8FAFC;
+    color: #F0F6FC;
     font-weight: 600;
 }
-.dot-red { color: #EF4444; }
-.dot-amber { color: #F59E0B; }
-.dot-green { color: #10B981; }
 
-/* Alert Banner */
-.cc-alert-banner {
-    background: linear-gradient(90deg, rgba(239, 68, 68, 0.08) 0%, rgba(15, 23, 42, 0.95) 100%);
-    border: 1px solid #7F1D1D;
-    border-left: 4px solid #EF4444;
-    border-radius: 8px;
+/* Status Chips - Restrained Enterprise Badges */
+.ops-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 4px;
+    line-height: 1.35;
+}
+.chip-red {
+    background: rgba(248, 81, 73, 0.12);
+    color: #F85149;
+    border: 1px solid rgba(248, 81, 73, 0.28);
+}
+.chip-amber {
+    background: rgba(210, 153, 34, 0.12);
+    color: #D29922;
+    border: 1px solid rgba(210, 153, 34, 0.28);
+}
+.chip-green {
+    background: rgba(63, 185, 80, 0.12);
+    color: #3FB950;
+    border: 1px solid rgba(63, 185, 80, 0.28);
+}
+.chip-blue, .chip-cyan, .chip-purple {
+    background: rgba(56, 139, 253, 0.12);
+    color: #58A6FF;
+    border: 1px solid rgba(56, 139, 253, 0.28);
+}
+
+/* Primary Supplier Disruption Summary (Hero Focus) */
+.cc-disruption-hero {
+    background: #161B22;
+    border: 1px solid #30363D;
+    border-left: 3px solid #F85149;
+    border-radius: 6px;
     padding: 14px 18px;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
 }
-.cc-alert-head {
+.cc-disruption-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #21262D;
     flex-wrap: wrap;
     gap: 8px;
 }
-.cc-alert-title {
-    font-size: 0.88rem;
+.cc-disruption-title {
+    font-size: 0.95rem;
     font-weight: 700;
-    color: #FCA5A5;
+    color: #F0F6FC;
     display: flex;
     align-items: center;
     gap: 8px;
 }
-.cc-alert-grid {
+.cc-disruption-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 8px 16px;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px 16px;
     margin: 8px 0;
-    font-size: 0.76rem;
-    color: #CBD5E1;
 }
-.cc-alert-item b {
-    color: #F8FAFC;
+.cc-disruption-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
-.cc-alert-foot {
+.cc-disruption-cell .cell-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #8B949E;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.cc-disruption-cell .cell-val {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #F0F6FC;
+}
+.cc-disruption-foot {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-top: 1px solid rgba(127, 29, 29, 0.4);
+    border-top: 1px solid #21262D;
     padding-top: 8px;
-    margin-top: 6px;
-    font-size: 0.70rem;
-    color: #94A3B8;
+    margin-top: 10px;
+    font-size: 0.68rem;
+    color: #8B949E;
     flex-wrap: wrap;
     gap: 8px;
 }
 
-/* Symmetrical 4-KPI Grid */
+/* Compact, Symmetrical 4-KPI Grid */
 .cc-kpi-card {
-    background: #0C101C;
-    border: 1px solid #1A2438;
-    border-radius: 8px;
-    padding: 14px 16px;
+    background: #161B22;
+    border: 1px solid #30363D;
+    border-radius: 6px;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 125px;
-    transition: all 0.2s ease;
+    min-height: 104px;
     box-sizing: border-box;
+    transition: border-color 0.15s ease;
 }
 .cc-kpi-card:hover {
-    border-color: #2D3E60;
-    background: #0F1524;
+    border-color: #58A6FF;
 }
 .cc-kpi-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 .cc-kpi-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: #94A3B8;
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: #8B949E;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-.cc-kpi-mid {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin: 4px 0;
+    letter-spacing: 0.04em;
 }
 .cc-kpi-val {
-    font-size: 1.65rem;
-    font-weight: 800;
-    color: #F8FAFC;
-    line-height: 1;
-}
-.cc-kpi-icon {
-    font-size: 1.25rem;
-    opacity: 0.85;
+    font-size: 1.50rem;
+    font-weight: 700;
+    color: #F0F6FC;
+    line-height: 1.1;
+    font-family: 'JetBrains Mono', 'Inter', monospace;
+    margin: 3px 0;
 }
 .cc-kpi-bot {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.72rem;
-    margin-top: 6px;
+    font-size: 0.70rem;
+    margin-top: 4px;
     padding-top: 6px;
-    border-top: 1px solid #161F30;
+    border-top: 1px solid #21262D;
+    color: #8B949E;
 }
 
 /* Stage Echelon Cards */
 .cc-stage-card {
-    background: #0B0F1B;
-    border: 1px solid #1A2438;
-    border-radius: 8px;
-    padding: 14px 16px;
+    background: #161B22;
+    border: 1px solid #30363D;
+    border-radius: 6px;
+    padding: 12px 14px;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -319,49 +356,46 @@ st.markdown("""
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     padding-bottom: 6px;
-    border-bottom: 1px solid #161F30;
+    border-bottom: 1px solid #21262D;
 }
 .cc-stage-title {
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     font-weight: 700;
-    color: #F1F5F9;
+    color: #F0F6FC;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
 .cc-stage-body {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    font-size: 0.75rem;
-    color: #CBD5E1;
+    gap: 6px;
+    font-size: 0.74rem;
+    color: #C9D1D9;
 }
 .cc-stage-metric-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 4px 0;
-    border-bottom: 1px dashed #141B2A;
+    padding: 3px 0;
+    border-bottom: 1px dashed #21262D;
 }
 .cc-stage-metric-label {
-    color: #94A3B8;
-    font-size: 0.72rem;
+    color: #8B949E;
+    font-size: 0.70rem;
 }
 .cc-stage-metric-val {
-    font-weight: 700;
-    color: #F8FAFC;
+    font-weight: 600;
+    color: #F0F6FC;
 }
 
-/* Risk Analysis Panels */
+/* Analysis Panels */
 .cc-panel {
-    background: #0B0F1B;
-    border: 1px solid #1A2438;
-    border-radius: 8px;
-    padding: 14px 18px;
+    background: #161B22;
+    border: 1px solid #30363D;
+    border-radius: 6px;
+    padding: 12px 16px;
     height: 100%;
     box-sizing: border-box;
 }
@@ -369,29 +403,26 @@ st.markdown("""
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #161F30;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #21262D;
 }
 .cc-panel-title {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 700;
-    color: #F1F5F9;
+    color: #F0F6FC;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
 
 /* Recommended Recovery Panel */
 .cc-rec-panel {
-    background: #0A0E1A;
-    border: 1px solid #1E293B;
-    border-left: 4px solid #A855F7;
-    border-radius: 8px;
-    padding: 18px 22px;
-    margin-top: 20px;
+    background: #161B22;
+    border: 1px solid #30363D;
+    border-left: 3px solid #388BFD;
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-top: 16px;
     margin-bottom: 12px;
 }
 .cc-rec-header {
@@ -399,82 +430,80 @@ st.markdown("""
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #172033;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #21262D;
 }
 .cc-rec-title {
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: #F8FAFC;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #F0F6FC;
 }
 .cc-rec-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 10px;
-    margin: 14px 0;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
+    margin: 12px 0;
 }
 .cc-rec-stat-card {
-    background: #0F1424;
-    border: 1px solid #1A2438;
-    border-radius: 6px;
-    padding: 10px 12px;
+    background: #0D1117;
+    border: 1px solid #30363D;
+    border-radius: 4px;
+    padding: 8px 10px;
 }
 .cc-rec-stat-label {
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: #94A3B8;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: #8B949E;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
 }
 .cc-rec-stat-val {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #F8FAFC;
+    font-size: 1.18rem;
+    font-weight: 700;
+    color: #F0F6FC;
     line-height: 1.1;
+    font-family: 'JetBrains Mono', 'Inter', monospace;
 }
 .cc-rec-stat-sub {
-    font-size: 0.68rem;
-    margin-top: 4px;
-    color: #64748B;
+    font-size: 0.65rem;
+    margin-top: 2px;
+    color: #8B949E;
 }
 
-/* Tri-way comparison table styling */
+/* Tri-way Strategy Comparison Table */
 .cc-benchmark-table {
     width: 100%;
     border-collapse: collapse;
-    margin: 12px 0;
-    font-size: 0.76rem;
+    margin: 10px 0;
+    font-size: 0.74rem;
 }
 .cc-benchmark-table th {
-    background: #111728;
-    color: #94A3B8;
-    font-weight: 700;
+    background: #0D1117;
+    color: #8B949E;
+    font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.66rem;
+    font-size: 0.64rem;
     letter-spacing: 0.04em;
-    padding: 8px 10px;
+    padding: 7px 9px;
     text-align: left;
-    border-bottom: 1px solid #1E293B;
+    border-bottom: 1px solid #30363D;
 }
 .cc-benchmark-table td {
-    padding: 8px 10px;
-    color: #E2E8F0;
-    border-bottom: 1px solid #141B2B;
+    padding: 7px 9px;
+    color: #C9D1D9;
+    border-bottom: 1px solid #21262D;
 }
 .cc-benchmark-table tr.active-row {
-    background: rgba(168, 85, 247, 0.08);
+    background: rgba(56, 139, 253, 0.08);
     font-weight: 600;
 }
 .cc-benchmark-table tr.active-row td {
-    color: #FFFFFF;
-    border-top: 1px solid rgba(168, 85, 247, 0.25);
-    border-bottom: 1px solid rgba(168, 85, 247, 0.25);
+    color: #F0F6FC;
+    border-top: 1px solid rgba(56, 139, 253, 0.25);
+    border-bottom: 1px solid rgba(56, 139, 253, 0.25);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -485,20 +514,17 @@ st.markdown("""
 st.markdown(f"""
 <div class="cc-header-container">
     <div class="cc-header-title-block">
-        <span class="cc-header-badge">AI RESILIENT OPERATIONS &bull; COMMAND CENTER</span>
         <h1 class="cc-header-title">Supply Chain Command Center</h1>
-        <p class="cc-header-subtitle">AI-powered disruption monitoring and recovery intelligence</p>
+        <p class="cc-header-subtitle">Real-time multi-echelon disruption monitoring and recovery operations</p>
     </div>
     <div class="cc-header-meta-block">
         <div class="cc-meta-pill">
-            <span class="dot-red">●</span>
             <span class="label">Scenario:</span>
-            <span class="value">Critical Supplier Shutdown</span>
+            <span class="value">Supplier Outage</span>
         </div>
         <div class="cc-meta-pill">
-            <span class="dot-amber">●</span>
-            <span class="label">Disruption Duration:</span>
-            <span class="value">{scenario.duration_days} Days (Days 1–{scenario.duration_days})</span>
+            <span class="label">Duration:</span>
+            <span class="value">{scenario.duration_days} Days</span>
         </div>
         <div class="cc-meta-pill">
             <span class="label">Last Updated:</span>
@@ -511,7 +537,7 @@ st.markdown(f"""
 # Compact scenario control & status bar
 hdr_col1, hdr_col2 = st.columns([4, 1])
 with hdr_col1:
-    st.caption(f"Active Network Scenario: **{disrupted_name} ({disrupted_id}) {scenario.duration_days}-Day Outage** | 3-Echelon Topology: Suppliers -> Plant Alpha -> Regional DCs")
+    st.caption(f"Active Network Topology: **{disrupted_name} ({disrupted_id}) {scenario.duration_days}-Day Outage** | Echelons: Suppliers -> Plant Alpha -> Regional Distribution Centers")
 with hdr_col2:
     if st.button("Re-Sync Solver", use_container_width=True):
         with st.spinner("Re-evaluating optimization engine..."):
@@ -520,50 +546,52 @@ with hdr_col2:
         st.rerun()
 
 # =========================================================================
-# SECTION B: CRITICAL DISRUPTION ALERT
+# SECTION B: SUPPLIER DISRUPTION SUMMARY (PRIMARY OPERATIONAL FOCUS)
 # =========================================================================
 baseline_unmet_str = f"{comp_df.iloc[0]['Unmet Demand (Units)']:,} units backordered" if not comp_df.empty else "5,170 units backordered"
 baseline_fill_str = f"{comp_df.iloc[0]['Fulfillment Rate (%)']:.1f}% Baseline Fill" if not comp_df.empty else "14.7% Baseline Fill"
 
 st.markdown(f"""
-<div class="cc-alert-banner">
-    <div class="cc-alert-head">
-        <div class="cc-alert-title">
-            <span class="ops-status-chip chip-red" style="font-weight:700;">ALERT</span> <b>CRITICAL DISRUPTION DETECTED:</b> Primary Supplier Shutdown ({disrupted_name})
+<div class="cc-disruption-hero">
+    <div class="cc-disruption-header">
+        <div class="cc-disruption-title">
+            <span class="ops-status-chip chip-red">INCIDENT ACTIVE</span>
+            <span>Primary Supplier Disruption: <b>{disrupted_name} ({disrupted_id})</b></span>
         </div>
-        <div>
-            <span class="ops-status-chip chip-red">SEVERITY: CRITICAL</span>
-            <span class="ops-status-chip chip-amber">LINE STARVATION: DAY {stockout_day}</span>
-        </div>
-    </div>
-    <div class="cc-alert-grid">
-        <div class="cc-alert-item">
-            <span style="color:#94A3B8;">Disrupted Node:</span><br>
-            <b>{disrupted_name} ({disrupted_id})</b>
-        </div>
-        <div class="cc-alert-item">
-            <span style="color:#94A3B8;">Duration & Window:</span><br>
-            <b>{scenario.duration_days} Days</b> (Days 1–{scenario.duration_days}, Est. Recovery: Day {scenario.duration_days + 1})
-        </div>
-        <div class="cc-alert-item">
-            <span style="color:#94A3B8;">Critical Component:</span><br>
-            <b>{crit_item_name}</b>
-        </div>
-        <div class="cc-alert-item">
-            <span style="color:#94A3B8;">At-Risk Orders:</span><br>
-            <b>{at_risk_orders_count} of {total_orders_count} Batches ({at_risk_orders_pct}%)</b>
-        </div>
-        <div class="cc-alert-item">
-            <span style="color:#94A3B8;">Service-Level Exposure:</span><br>
-            <b>{baseline_fill_str}</b> ({baseline_unmet_str})
-        </div>
-        <div class="cc-alert-item">
-            <span style="color:#94A3B8;">Recovery Status:</span><br>
-            <b style="color:#A855F7;">AI Plan Synthesized & Feasible</b>
+        <div style="display:flex; gap:6px; align-items:center;">
+            <span class="ops-status-chip chip-red">CRITICAL OUTAGE</span>
+            <span class="ops-status-chip chip-amber">STARVATION: DAY {stockout_day}</span>
         </div>
     </div>
-    <div class="cc-alert-foot">
-        <span><b>Telemetry Integrity Note:</b> Disruption data generated from verified multi-echelon scenario model and optimization engine.</span>
+    <div class="cc-disruption-grid">
+        <div class="cc-disruption-cell">
+            <span class="cell-label">Impacted Node</span>
+            <span class="cell-val">{disrupted_name} ({disrupted_id})</span>
+        </div>
+        <div class="cc-disruption-cell">
+            <span class="cell-label">Outage Duration</span>
+            <span class="cell-val">{scenario.duration_days} Days (Recovery: Day {scenario.duration_days + 1})</span>
+        </div>
+        <div class="cc-disruption-cell">
+            <span class="cell-label">Critical Component</span>
+            <span class="cell-val">{crit_item_name}</span>
+        </div>
+        <div class="cc-disruption-cell">
+            <span class="cell-label">At-Risk Customer Orders</span>
+            <span class="cell-val" style="color:#F85149;">{at_risk_orders_count} of {total_orders_count} Batches ({at_risk_orders_pct}%)</span>
+        </div>
+        <div class="cc-disruption-cell">
+            <span class="cell-label">Baseline Service Exposure</span>
+            <span class="cell-val">{baseline_fill_str} ({baseline_unmet_str})</span>
+        </div>
+        <div class="cc-disruption-cell">
+            <span class="cell-label">Mitigation State</span>
+            <span class="cell-val" style="color:#58A6FF;">Optimal Recovery Plan Synthesized</span>
+        </div>
+    </div>
+    <div class="cc-disruption-foot">
+        <span>Verified multi-echelon network telemetry &bull; Assembly line starvation risk active on Day {stockout_day}</span>
+        <span style="color:#58A6FF; font-weight:600;">Autonomous Sourcing & Logistics Resolution Available</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -575,7 +603,7 @@ with alert_col2:
         st.switch_page("pages/3_Recovery_Planner.py")
 
 # =========================================================================
-# SECTION C: KPI OVERVIEW — SYMMETRICAL CARD GRID (4 EQUAL CARDS)
+# SECTION C: COMPACT, CONSISTENT KPI OVERVIEW
 # =========================================================================
 kpi_c1, kpi_c2, kpi_c3, kpi_c4 = st.columns(4)
 
@@ -584,15 +612,12 @@ with kpi_c1:
     <div class="cc-kpi-card">
         <div class="cc-kpi-top">
             <span class="cc-kpi-label">At-Risk Orders</span>
-            <span class="ops-status-chip chip-red">CRITICAL EXPOSURE</span>
+            <span class="ops-status-chip chip-red">EXPOSURE</span>
         </div>
-        <div class="cc-kpi-mid">
-            <span class="cc-kpi-val">{at_risk_orders_count} <span style="font-size:0.85rem; color:#94A3B8;">({at_risk_orders_pct}%)</span></span>
-            <span class="ops-status-chip chip-red" style="font-size:0.65rem;">SHORTAGE</span>
-        </div>
+        <div class="cc-kpi-val">{at_risk_orders_count} <span style="font-size:0.80rem; color:#8B949E; font-weight:500;">({at_risk_orders_pct}%)</span></div>
         <div class="cc-kpi-bot">
-            <span style="color:#10B981; font-weight:600;">AI Protects Critical Orders</span>
-            <span style="color:#94A3B8;">{total_orders_count} Total Batches</span>
+            <span style="color:#3FB950;">Critical Orders Protected</span>
+            <span>{total_orders_count} Batches Total</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -602,15 +627,12 @@ with kpi_c2:
     <div class="cc-kpi-card">
         <div class="cc-kpi-top">
             <span class="cc-kpi-label">Inventory Coverage</span>
-            <span class="ops-status-chip chip-amber">RUNWAY: {runout_days} DAYS</span>
+            <span class="ops-status-chip chip-amber">{runout_days} DAYS</span>
         </div>
-        <div class="cc-kpi-mid">
-            <span class="cc-kpi-val">{runout_days} <span style="font-size:0.85rem; color:#94A3B8;">Days</span></span>
-            <span class="ops-status-chip chip-amber" style="font-size:0.65rem;">BUFFER</span>
-        </div>
+        <div class="cc-kpi-val">{runout_days} <span style="font-size:0.80rem; color:#8B949E; font-weight:500;">Days</span></div>
         <div class="cc-kpi-bot">
-            <span style="color:#EF4444; font-weight:600;">Starvation on Day {stockout_day}</span>
-            <span style="color:#94A3B8;">{current_mcu_stock:,} u On-Hand</span>
+            <span style="color:#F85149;">Starvation on Day {stockout_day}</span>
+            <span>{current_mcu_stock:,} u On-Hand</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -622,13 +644,10 @@ with kpi_c3:
             <span class="cc-kpi-label">Projected Fill Rate</span>
             <span class="ops-status-chip chip-green">100% T1 SLA</span>
         </div>
-        <div class="cc-kpi-mid">
-            <span class="cc-kpi-val">{fill_rate:.1f}%</span>
-            <span class="ops-status-chip chip-green" style="font-size:0.65rem;">SERVICE</span>
-        </div>
+        <div class="cc-kpi-val">{fill_rate:.1f}%</div>
         <div class="cc-kpi-bot">
-            <span style="color:#10B981; font-weight:600;">+{fill_uplift_vs_erp:.1f}% vs ERP</span>
-            <span style="color:#94A3B8;">{unmet_units:,}u Backorder</span>
+            <span style="color:#3FB950;">+{fill_uplift_vs_erp:.1f}% vs Legacy ERP</span>
+            <span>{unmet_units:,} u Backorder</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -638,15 +657,12 @@ with kpi_c4:
     <div class="cc-kpi-card">
         <div class="cc-kpi-top">
             <span class="cc-kpi-label">Recovery Cost</span>
-            <span class="ops-status-chip chip-cyan">OPTIMAL PLAN</span>
+            <span class="ops-status-chip chip-blue">OPTIMAL</span>
         </div>
-        <div class="cc-kpi-mid">
-            <span class="cc-kpi-val">${total_landed_cost/1000:,.1f}K</span>
-            <span class="ops-status-chip chip-cyan" style="font-size:0.65rem;">SPEND</span>
-        </div>
+        <div class="cc-kpi-val">${total_landed_cost/1000:,.1f}K</div>
         <div class="cc-kpi-bot">
-            <span style="color:#06B6D4; font-weight:600;">Saves ${cost_savings_erp/1000:,.0f}K vs ERP</span>
-            <span style="color:#94A3B8;">Total Landed</span>
+            <span style="color:#58A6FF;">Saves ${cost_savings_erp/1000:,.0f}K vs ERP</span>
+            <span>Total Landed</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -658,11 +674,11 @@ st.markdown("<br>", unsafe_allow_html=True)
 # =========================================================================
 st.markdown("""
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-    <div style="font-size:0.88rem; font-weight:700; color:#F8FAFC; text-transform:uppercase; letter-spacing:0.04em;">
+    <div style="font-size:0.84rem; font-weight:700; color:#F0F6FC; text-transform:uppercase; letter-spacing:0.04em;">
         Three-Echelon Disruption Propagation & Sourcing Flow
     </div>
-    <div style="font-size:0.72rem; color:#94A3B8;">
-        Network Propagation: <span style="color:#EF4444;">Primary Disruption</span> -> <span style="color:#F59E0B;">Plant Starvation Risk</span> -> <span style="color:#10B981;">Regional Fulfillment</span>
+    <div style="font-size:0.70rem; color:#8B949E;">
+        Network Propagation: <span style="color:#F85149;">Primary Disruption</span> -> <span style="color:#D29922;">Plant Starvation Risk</span> -> <span style="color:#3FB950;">Regional Fulfillment</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -682,7 +698,7 @@ with stage_c1:
     sup_rows_html = "".join([
         f"""<div class="cc-stage-metric-row">
             <span class="cc-stage-metric-label">{s.get('name', s.get('supplier_name', s.get('supplier_id', 'Supplier'))).split('(')[0].strip()}:</span>
-            <span class="cc-stage-metric-val" style="color:{'#EF4444' if s.get('supplier_id') == disrupted_id else '#10B981'};">
+            <span class="cc-stage-metric-val" style="color:{'#F85149' if s.get('supplier_id') == disrupted_id else '#3FB950'};">
                 {'SHUTDOWN' if s.get('supplier_id') == disrupted_id else f"Active ({s.get('daily_capacity', 0)} u/d)"}
             </span>
         </div>"""
@@ -697,9 +713,9 @@ with stage_c1:
         </div>
         <div class="cc-stage-body">
             {sup_rows_html}
-            <div class="cc-stage-metric-row" style="margin-top:4px; padding-top:4px; border-top:1px solid #161F30;">
+            <div class="cc-stage-metric-row" style="margin-top:4px; padding-top:4px; border-top:1px solid #21262D;">
                 <span class="cc-stage-metric-label">Available Backup Capacity:</span>
-                <span class="cc-stage-metric-val" style="color:#06B6D4;">{total_backup_cap:,} Units/Day</span>
+                <span class="cc-stage-metric-val" style="color:#58A6FF;">{total_backup_cap:,} Units/Day</span>
             </div>
         </div>
     </div>
@@ -719,11 +735,11 @@ with stage_c2:
             </div>
             <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Component Availability:</span>
-                <span class="cc-stage-metric-val" style="color:#F59E0B;">{crit_item_name} ({current_mcu_stock:,} u)</span>
+                <span class="cc-stage-metric-val" style="color:#D29922;">{crit_item_name} ({current_mcu_stock:,} u)</span>
             </div>
             <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Buffer Runway:</span>
-                <span class="cc-stage-metric-val" style="color:#EF4444;">{runout_days} Days Remaining</span>
+                <span class="cc-stage-metric-val" style="color:#F85149;">{runout_days} Days Remaining</span>
             </div>
             <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Average Daily Consumption:</span>
@@ -738,7 +754,7 @@ with stage_c3:
     <div class="cc-stage-card">
         <div class="cc-stage-header">
             <span class="cc-stage-title">Stage 3: Customer Distribution</span>
-            <span class="ops-status-chip chip-cyan">{at_risk_orders_pct}% ORDERS AT RISK</span>
+            <span class="ops-status-chip chip-blue">{at_risk_orders_pct}% ORDERS AT RISK</span>
         </div>
         <div class="cc-stage-body">
             <div class="cc-stage-metric-row">
@@ -747,15 +763,15 @@ with stage_c3:
             </div>
             <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Customer Orders at Risk:</span>
-                <span class="cc-stage-metric-val" style="color:#FCA5A5;">{at_risk_orders_count} of {total_orders_count} Batches</span>
+                <span class="cc-stage-metric-val" style="color:#F85149;">{at_risk_orders_count} of {total_orders_count} Batches</span>
             </div>
             <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Tier-1 Priority SLA:</span>
-                <span class="cc-stage-metric-val" style="color:#10B981;">100% Guaranteed</span>
+                <span class="cc-stage-metric-val" style="color:#3FB950;">100% Guaranteed</span>
             </div>
             <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Overall Service Level:</span>
-                <span class="cc-stage-metric-val" style="color:#10B981;">{fill_rate:.1f}% Projected Fill</span>
+                <span class="cc-stage-metric-val" style="color:#3FB950;">{fill_rate:.1f}% Projected Fill</span>
             </div>
         </div>
     </div>
@@ -801,11 +817,11 @@ with risk_col1:
     fig_inv.update_layout(
         height=190,
         margin=dict(l=10, r=20, t=20, b=20),
-        xaxis=dict(title="Buffer Coverage Runway (Days)", showgrid=True, gridcolor="#162032", range=[0, max(8, scenario.duration_days + 2)]),
+        xaxis=dict(title="Buffer Coverage Runway (Days)", showgrid=True, gridcolor="#21262D", range=[0, max(8, scenario.duration_days + 2)]),
         yaxis=dict(showgrid=False),
-        plot_bgcolor="#0A0E1A",
-        paper_bgcolor="#0A0E1A",
-        font=dict(color="#CBD5E1", size=10, family="Inter")
+        plot_bgcolor="#161B22",
+        paper_bgcolor="#161B22",
+        font=dict(color="#8B949E", size=10, family="Inter")
     )
     st.plotly_chart(fig_inv, use_container_width=True, config={"displayModeBar": False})
 
@@ -846,7 +862,7 @@ with risk_col2:
     <div class="cc-panel">
         <div class="cc-panel-title-bar">
             <span class="cc-panel-title">Supply Chain Risk Distribution</span>
-            <span class="ops-status-chip chip-cyan">ECHELON EXPOSURE</span>
+            <span class="ops-status-chip chip-blue">ECHELON EXPOSURE</span>
         </div>
     """, unsafe_allow_html=True)
 
@@ -858,14 +874,14 @@ with risk_col2:
     fig_risk.add_trace(go.Bar(
         y=stages_risk, x=unmitigated_risk, orientation="h",
         name="Unmitigated Risk",
-        marker=dict(color="#EF4444", line=dict(color="#7F1D1D", width=1)),
+        marker=dict(color="#F85149", line=dict(color="#30363D", width=1)),
         text=[f"{v:.1f}%" for v in unmitigated_risk], textposition="inside",
         textfont=dict(color="#FFFFFF", size=9.5, family="Inter")
     ))
     fig_risk.add_trace(go.Bar(
         y=stages_risk, x=mitigated_risk, orientation="h",
         name="Mitigated Risk",
-        marker=dict(color="#10B981", line=dict(color="#065F46", width=1)),
+        marker=dict(color="#3FB950", line=dict(color="#30363D", width=1)),
         text=[f"{v:.1f}%" for v in mitigated_risk], textposition="inside",
         textfont=dict(color="#FFFFFF", size=9.5, family="Inter")
     ))
@@ -874,18 +890,18 @@ with risk_col2:
         barmode="group",
         height=190,
         margin=dict(l=10, r=20, t=10, b=20),
-        xaxis=dict(title="Risk Exposure Index (%)", showgrid=True, gridcolor="#162032", range=[0, 100]),
+        xaxis=dict(title="Risk Exposure Index (%)", showgrid=True, gridcolor="#21262D", range=[0, 100]),
         yaxis=dict(showgrid=False),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=9.5, color="#CBD5E1")),
-        plot_bgcolor="#0A0E1A",
-        paper_bgcolor="#0A0E1A",
-        font=dict(color="#CBD5E1", size=10, family="Inter")
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=9.5, color="#8B949E")),
+        plot_bgcolor="#161B22",
+        paper_bgcolor="#161B22",
+        font=dict(color="#8B949E", size=10, family="Inter")
     )
     st.plotly_chart(fig_risk, use_container_width=True, config={"displayModeBar": False})
 
     st.markdown("""
-    <div style="background:#0F1424; border:1px solid #1A2438; border-radius:6px; padding:10px 12px; font-size:0.73rem; color:#CBD5E1; line-height:1.45;">
-        <b>Echelon Risk Breakdown:</b><br>
+    <div style="background:#0D1117; border:1px solid #30363D; border-radius:4px; padding:10px 12px; font-size:0.72rem; color:#8B949E; line-height:1.45;">
+        <b style="color:#C9D1D9;">Echelon Risk Breakdown:</b><br>
         &bull; <b>Supplier Stage:</b> Dual-sourcing contracts mitigate single-point failure by distributing volume.<br>
         &bull; <b>Manufacturing Stage:</b> Air expediting directly closes the buffer depletion gap before factory stoppage.<br>
         &bull; <b>Distribution Stage:</b> Tier-based SLA prioritization secures 100% fulfillment for Tier-1 critical accounts.
@@ -926,34 +942,35 @@ else:
 # Generate PO cards dynamically from plan allocations
 alloc_cards_html = ""
 for idx, a in enumerate(plan.allocations):
-    border_color = "#A855F7" if "EXPEDITED" in a.shipping_mode else "#06B6D4"
+    border_color = "#388BFD" if "EXPEDITED" in a.shipping_mode else "#30363D"
+    badge_color = "#58A6FF" if "EXPEDITED" in a.shipping_mode else "#8B949E"
     alloc_cards_html += f"""
-    <div style="background:#0F1524; border:1px solid #1E293B; border-left:3px solid {border_color}; border-radius:6px; padding:8px 10px;">
-        <div style="font-size:0.65rem; color:#94A3B8; text-transform:uppercase; font-weight:700;">PO #{idx+1} &bull; {a.supplier_name.split('(')[0].strip().upper()}</div>
-        <div style="font-size:0.88rem; font-weight:800; color:#F8FAFC; margin:2px 0;">{a.allocated_units:,} Units &bull; Lands Day {a.arrival_day}</div>
-        <div style="font-size:0.68rem; color:{border_color};">{'Expedited Air' if 'EXPEDITED' in a.shipping_mode else 'Standard Freight'} (${a.freight_cost_per_unit:.2f}/u freight)</div>
+    <div style="background:#0D1117; border:1px solid #30363D; border-left:3px solid {border_color}; border-radius:4px; padding:8px 10px;">
+        <div style="font-size:0.64rem; color:#8B949E; text-transform:uppercase; font-weight:600;">PO #{idx+1} &bull; {a.supplier_name.split('(')[0].strip().upper()}</div>
+        <div style="font-size:0.86rem; font-weight:700; color:#F0F6FC; margin:2px 0;">{a.allocated_units:,} Units &bull; Lands Day {a.arrival_day}</div>
+        <div style="font-size:0.67rem; color:{badge_color};">{'Expedited Air' if 'EXPEDITED' in a.shipping_mode else 'Standard Freight'} (${a.freight_cost_per_unit:.2f}/u freight)</div>
     </div>
     """
 
 rec_html = f"""<div class="cc-rec-panel">
 <div class="cc-rec-header">
 <div class="cc-rec-title">
-<b>AI-Recommended Recovery Plan</b>
+<b>Recommended Recovery Plan & Dispatch Schedule</b>
 </div>
 <div>
-<span class="ops-status-chip chip-purple">STATUS: SYNTHESIZED • READY FOR REVIEW</span>
-<span class="ops-status-chip chip-green">FEASIBILITY: 100% GUARANTEED</span>
-<span class="ops-status-chip chip-cyan">CONFIDENCE: {plan.confidence_score * 100:.0f}%</span>
+<span class="ops-status-chip chip-blue">STATUS: SYNTHESIZED</span>
+<span class="ops-status-chip chip-green">FEASIBILITY: 100%</span>
+<span class="ops-status-chip chip-blue">CONFIDENCE: {plan.confidence_score * 100:.0f}%</span>
 </div>
 </div>
-<div style="font-size:0.80rem; color:#E2E8F0; line-height:1.5; margin-bottom:10px;">
+<div style="font-size:0.78rem; color:#C9D1D9; line-height:1.5; margin-bottom:10px;">
 <b>Primary Recommended Sourcing & Logistics Action:</b><br>
-<span style="color:#CBD5E1;">
+<span style="color:#8B949E;">
 {plan.executive_summary}
 </span>
 </div>
-<div style="background:#0D1322; border-left:3px solid #06B6D4; padding:9px 14px; border-radius:4px; font-size:0.74rem; color:#CBD5E1; margin-bottom:12px; line-height:1.45;">
-<b>Data-Grounded Rationale:</b> Multi-Agent Coordinator resolved conflicting agent proposals by solving an optimization model. Expediting emergency replenishment bridges the {runout_days:.2f}-day buffer runway gap before line starvation on Day {stockout_day}, while sustained standard freight stabilizes the network.
+<div style="background:#0D1117; border:1px solid #30363D; border-left:3px solid #388BFD; padding:8px 12px; border-radius:4px; font-size:0.72rem; color:#C9D1D9; margin-bottom:12px; line-height:1.45;">
+<b style="color:#F0F6FC;">Data-Grounded Rationale:</b> Multi-Agent Coordinator resolved conflicting agent proposals by solving an optimization model. Expediting emergency replenishment bridges the {runout_days:.2f}-day buffer runway gap before line starvation on Day {stockout_day}, while sustained standard freight stabilizes the network.
 </div>
 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:8px; margin-bottom:14px;">
 {alloc_cards_html}
@@ -961,39 +978,39 @@ rec_html = f"""<div class="cc-rec-panel">
 <div class="cc-rec-stats-grid">
 <div class="cc-rec-stat-card">
 <div class="cc-rec-stat-label">Landed Recovery Cost</div>
-<div class="cc-rec-stat-val" style="color:#06B6D4;">${cost_res/1000:,.1f}K</div>
+<div class="cc-rec-stat-val" style="color:#58A6FF;">${cost_res/1000:,.1f}K</div>
 <div class="cc-rec-stat-sub">Saves ${cost_savings_erp/1000:,.0f}K vs ERP</div>
 </div>
 <div class="cc-rec-stat-card">
 <div class="cc-rec-stat-label">Expected Fill Rate</div>
-<div class="cc-rec-stat-val" style="color:#10B981;">{fill_res:.1f}%</div>
+<div class="cc-rec-stat-val" style="color:#3FB950;">{fill_res:.1f}%</div>
 <div class="cc-rec-stat-sub">+{fill_uplift_vs_erp:.1f}% vs Legacy ERP</div>
 </div>
 <div class="cc-rec-stat-card">
 <div class="cc-rec-stat-label">Recovery Horizon</div>
-<div class="cc-rec-stat-val" style="color:#A855F7;">{recov_res} Days</div>
+<div class="cc-rec-stat-val" style="color:#F0F6FC;">{recov_res} Days</div>
 <div class="cc-rec-stat-sub">Stabilization window</div>
 </div>
 <div class="cc-rec-stat-card">
 <div class="cc-rec-stat-label">Fulfillment Status</div>
-<div class="cc-rec-stat-val" style="color:#10B981;">{fill_res:.1f}%</div>
+<div class="cc-rec-stat-val" style="color:#3FB950;">{fill_res:.1f}%</div>
 <div class="cc-rec-stat-sub">100% Tier-1 Guaranteed</div>
 </div>
 <div class="cc-rec-stat-card">
 <div class="cc-rec-stat-label">Residual Service Risk</div>
-<div class="cc-rec-stat-val" style="color:#F59E0B;">{unmet_res:,} u</div>
+<div class="cc-rec-stat-val" style="color:#D29922;">{unmet_res:,} u</div>
 <div class="cc-rec-stat-sub">Non-critical backlog</div>
 </div>
 </div>
 <div style="margin-top:14px;">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-<span style="font-size:0.74rem; font-weight:700; color:#F1F5F9; text-transform:uppercase;">
+<span style="font-size:0.74rem; font-weight:700; color:#F0F6FC; text-transform:uppercase;">
 Tri-Way Strategy Comparison (14-Day Planning Horizon)
 </span>
 <div style="display:flex; gap:6px;">
-<span class="ops-status-chip chip-green" style="font-size:0.62rem;">CAPACITY LIMIT: PASSED</span>
-<span class="ops-status-chip chip-green" style="font-size:0.62rem;">RUNWAY GAP: PASSED</span>
-<span class="ops-status-chip chip-green" style="font-size:0.62rem;">TIER-1 SLA: PASSED</span>
+<span class="ops-status-chip chip-green" style="font-size:0.62rem;">CAPACITY: PASSED</span>
+<span class="ops-status-chip chip-green" style="font-size:0.62rem;">RUNWAY: PASSED</span>
+<span class="ops-status-chip chip-green" style="font-size:0.62rem;">TIER-1: PASSED</span>
 </div>
 </div>
 <table class="cc-benchmark-table">
@@ -1017,7 +1034,7 @@ Tri-Way Strategy Comparison (14-Day Planning Horizon)
 <td>${cost_none:,.0f}</td>
 <td>{stockout_none} Days</td>
 <td>{recov_none} Days</td>
-<td><span style="color:#EF4444;">Failed</span></td>
+<td><span style="color:#F85149;">Failed</span></td>
 <td><span class="ops-status-chip chip-red" style="font-size:0.60rem;">3 VIOLATIONS</span></td>
 </tr>
 <tr>
@@ -1027,17 +1044,17 @@ Tri-Way Strategy Comparison (14-Day Planning Horizon)
 <td>${cost_erp:,.0f}</td>
 <td>{stockout_erp} Days</td>
 <td>{recov_erp} Days</td>
-<td><span style="color:#F59E0B;">Breach</span></td>
+<td><span style="color:#D29922;">Breach</span></td>
 <td><span class="ops-status-chip chip-amber" style="font-size:0.60rem;">1 VIOLATION</span></td>
 </tr>
 <tr class="active-row">
 <td><b>3. ResilientAI (Coordinated Multi-Agent)</b></td>
-<td><span style="color:#10B981; font-weight:800;">{fill_res:.1f}%</span></td>
-<td><span style="color:#10B981; font-weight:800;">{unmet_res:,} units</span></td>
-<td><span style="color:#06B6D4; font-weight:800;">${cost_res:,.0f}</span></td>
+<td><span style="color:#3FB950; font-weight:700;">{fill_res:.1f}%</span></td>
+<td><span style="color:#3FB950; font-weight:700;">{unmet_res:,} units</span></td>
+<td><span style="color:#58A6FF; font-weight:700;">${cost_res:,.0f}</span></td>
 <td><b>{stockout_res} Day</b></td>
 <td><b>{recov_res} Days</b></td>
-<td><span style="color:#10B981; font-weight:800;">100.0% Guaranteed</span></td>
+<td><span style="color:#3FB950; font-weight:700;">100.0% Guaranteed</span></td>
 <td><span class="ops-status-chip chip-green" style="font-size:0.60rem;">0 VIOLATIONS (OPTIMAL)</span></td>
 </tr>
 </tbody>
