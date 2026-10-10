@@ -1,0 +1,9 @@
+{
+  "name": "rerise-supply-chain",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ResilientAI Supply Chain Autonomous Multi-Agent Decision Support System",
+  "scripts": {
+    "build": "python bundle_stlite.py"
+  }
+}
