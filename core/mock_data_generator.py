@@ -368,6 +368,8 @@ class MockDataGenerator:
         raw_list = [dict(s) for s in self.preset["suppliers"]]
         
         for sup in raw_list:
+            sup["supplier_name"] = sup["name"]
+            sup["critical_component"] = sup["component"]
             # Scale costs
             sup["unit_cost"] = round(sup["unit_cost"] * cost_multiplier, 2)
             sup["std_freight_cost"] = round(sup["std_freight_cost"] * cost_multiplier, 2)
@@ -481,6 +483,7 @@ class MockDataGenerator:
                     "customer_id": cust["customer_id"],
                     "customer_name": cust["name"],
                     "tier": cust["tier"],
+                    "customer_tier": cust["tier"],
                     "demand_units": qty,
                     "sla_penalty_per_unit": cust["penalty"]
                 })

@@ -224,3 +224,92 @@ with tab_coord:
     st.markdown("##### Consolidated Action Plan Payload (Executive Summary)")
     prop_coord = wf["recovery_plan"].executive_summary
     st.info(prop_coord)
+
+st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("---")
+
+# =========================================================================
+# INTERACTIVE AI STRATEGY CHATBOT (POWERED BY GROQ LLM)
+# =========================================================================
+st.markdown("### Autonomous AI Strategy Chatbot & Operational Copilot")
+st.caption("Interact directly with the multi-agent decision support system powered by Groq LLM intelligence. Ask questions about recovery allocations, trade-offs, constraint validations, or specific customer impacts.")
+
+# Initialize chat message history
+if "agent_chat_history" not in st.session_state:
+    st.session_state.agent_chat_history = [
+        {
+            "role": "assistant",
+            "content": (
+                "Hello Planner. I am the ResilientAI Strategy Copilot powered by the Groq high-speed LLM engine. "
+                "I have real-time visibility into the active 3-echelon supply chain, including current inventory runway, "
+                "supplier capacity headroom, and mathematically solved recovery plans. How can I assist your operational decisions today?"
+            )
+        }
+    ]
+
+# Preset Quick-Prompt Chips
+st.markdown("##### Quick Operational Queries:")
+q_col1, q_col2, q_col3, q_col4, q_col5 = st.columns(5)
+
+prompt_to_send = None
+with q_col1:
+    if st.button("Synthesize Optimal Plan", use_container_width=True):
+        prompt_to_send = "Summarize the optimal multi-agent recovery plan, key metrics, and purchase allocations."
+with q_col2:
+    if st.button("Why Air Expedite?", use_container_width=True):
+        prompt_to_send = "Why did the logistics agent choose air freight expediting over standard transit?"
+with q_col3:
+    if st.button("Explain Vendor Split", use_container_width=True):
+        prompt_to_send = "Explain why volume is split across multiple backup suppliers instead of single-sourcing."
+with q_col4:
+    if st.button("Audit Constraints", use_container_width=True):
+        prompt_to_send = "Verify the hard constraint checks: are capacity bounds, SLAs, and lead-time feasibility satisfied?"
+with q_col5:
+    if st.button("Clear Chat History", use_container_width=True):
+        st.session_state.agent_chat_history = [
+            {
+                "role": "assistant",
+                "content": "Conversation cleared. Ready for your next query regarding supply chain mitigation."
+            }
+        ]
+        st.rerun()
+
+# Chat container with glassmorphic styling
+with st.container(border=True):
+    for message in st.session_state.agent_chat_history:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+# Text Input
+user_input = st.chat_input("Ask ResilientAI Copilot about recovery strategy, allocations, or constraints...")
+if user_input:
+    prompt_to_send = user_input
+
+if prompt_to_send:
+    # Append user turn
+    st.session_state.agent_chat_history.append({"role": "user", "content": prompt_to_send})
+    
+    # Generate assistant response with Groq LLM
+    from core.llm_service import query_chat_copilot
+    
+    session_ctx = {
+        "active_scenario": st.session_state.active_scenario,
+        "recovery_plan": st.session_state.recovery_plan,
+        "suppliers_df": st.session_state.suppliers_df,
+        "inventory_df": st.session_state.inventory_df,
+        "demand_df": st.session_state.demand_df,
+        "benchmark_results": st.session_state.benchmark_results,
+        "workflow_execution": st.session_state.workflow_execution,
+        "active_preset_name": st.session_state.get("active_preset_name", "Active Supply Chain Network")
+    }
+    
+    with st.spinner("Synthesizing multi-agent intelligence via Groq LLM..."):
+        ai_response = query_chat_copilot(
+            user_query=prompt_to_send,
+            chat_history=st.session_state.agent_chat_history[:-1],
+            session_state_dict=session_ctx
+        )
+        
+    st.session_state.agent_chat_history.append({"role": "assistant", "content": ai_response})
+    st.rerun()
+
