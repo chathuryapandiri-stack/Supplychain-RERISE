@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ResilientAI | Supply Chain Command Room</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@1.10.0/build/stlite.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      // Runs the Streamlit app entirely in the browser (Pyodide/WebAssembly) via stlite,
+      // so it can be served as a static site on Netlify.
+      import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@1.10.0/build/stlite.js";
+
+      const paths = [
+        "app.py",
+        "core/data_loader.py",
+        "core/models.py",
+        "core/state.py",
+        "core/ui_components.py",
+        "core/agents/coordinator_agent.py",
+        "core/agents/demand_agent.py",
+        "core/agents/inventory_agent.py",
+        "core/agents/logistics_agent.py",
+        "core/agents/supplier_risk_agent.py",
+        "core/optimization/solver.py",
+        "pages/1_Command_Center.py",
+        "pages/2_Agent_Workspace.py",
+        "pages/3_Recovery_Planner.py",
+        "pages/4_What_If_Simulator.py",
+        "pages/5_Performance_Audit.py",
+        "pages/6_Supply_Chain_Data.py",
+        "data/demand.csv",
+        "data/inventory.csv",
+        "data/suppliers.csv",
+      ];
+
+      mount(
+        {
+          entrypoint: "app.py",
+          requirements: ["pandas", "numpy", "plotly"],
+          files: Object.fromEntries(paths.map((p) => [p, { url: `./${p}` }])),
+        },
+        document.getElementById("root"),
+      );
+    </script>
+  </body>
+</html>
