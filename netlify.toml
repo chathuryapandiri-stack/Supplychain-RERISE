@@ -1,0 +1,5 @@
+# The app is a Streamlit app that runs in the browser via stlite (see index.html),
+# so the repository is served as-is with no build step.
+[build]
+  publish = "."
+  command = ""
