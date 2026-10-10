@@ -11,7 +11,7 @@ from datetime import datetime
 from core.state import init_session_state, record_audit
 from core.ui_components import apply_custom_css, render_metric_card
 
-st.set_page_config(page_title="Recovery Planner | ResilientAI", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="Recovery Planner | ResilientAI", layout="wide")
 apply_custom_css()
 init_session_state()
 
@@ -23,7 +23,7 @@ plan = st.session_state.recovery_plan
 scenario = st.session_state.active_scenario
 
 # Executive Summary
-st.info(f"💡 **Coordinator Strategy Synthesis**: {plan.executive_summary}")
+st.info(f"**Coordinator Strategy Synthesis**: {plan.executive_summary}")
 
 # High-Level Metrics
 m1, m2, m3, m4 = st.columns(4)
@@ -43,14 +43,14 @@ col_alloc, col_cost = st.columns([3, 2])
 
 with col_alloc:
     with st.container(border=True):
-        st.markdown("#### 📦 Recommended Purchase & Dispatch Schedule")
+        st.markdown("#### Recommended Purchase & Dispatch Schedule")
         st.caption("Volume allocations split between backup vendors to satisfy demand and avoid single-vendor bottlenecks.")
         
         alloc_table = []
         for a in plan.allocations:
             alloc_table.append({
                 "Supplier": a.supplier_name,
-                "Shipping Mode": "✈️ Air Expedited" if "EXPEDITED" in a.shipping_mode else "🚛 Standard Freight",
+                "Shipping Mode": "Air Expedited" if "EXPEDITED" in a.shipping_mode else "Standard Freight",
                 "Allocated Units": f"{a.allocated_units:,}",
                 "Lead Time": f"{a.lead_time_days} Days",
                 "Arrival Day": f"Day {a.arrival_day}",
@@ -62,7 +62,7 @@ with col_alloc:
 
 with col_cost:
     with st.container(border=True):
-        st.markdown("#### 💰 Landed Cost Decomposition")
+        st.markdown("#### Landed Cost Decomposition")
         cost_df = pd.DataFrame([
             {"Category": "Material Purchasing", "Amount": plan.total_material_cost},
             {"Category": "Freight & Expedite", "Amount": plan.total_freight_cost},
@@ -82,7 +82,7 @@ with col_cost:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Constraint Validation Section
-st.markdown("### 🛡️ Hard Constraint & SLA Validation Engine")
+st.markdown("### Hard Constraint & SLA Validation Engine")
 st.caption("Verifies mathematical bounds, supplier physical capacity, lead-time feasibility, and budget ceilings.")
 
 c_cols = st.columns(len(plan.constraints_status))
@@ -98,7 +98,7 @@ for idx, c in enumerate(plan.constraints_status):
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Human-in-the-Loop Planner Decision Form
-st.markdown("### ✍️ Human-in-the-Loop (HITL) Planner Approval Gating")
+st.markdown("### Human-in-the-Loop (HITL) Planner Approval Gating")
 st.caption("ResilientAI requires explicit human authorization before executing supplier allocations into the enterprise ERP.")
 
 with st.container(border=True):
@@ -127,15 +127,15 @@ with st.container(border=True):
         
     btn_approve, btn_reject, _ = st.columns([1, 1, 2])
     with btn_approve:
-        if st.button("✅ Approve Recovery Plan", use_container_width=True, type="primary"):
+        if st.button("Approve Recovery Plan", use_container_width=True, type="primary"):
             st.session_state.plan_approval_status = "APPROVED"
             record_audit("PLAN_APPROVED", planner_name, approval_notes)
-            st.toast("Recovery plan approved and logged to audit trail!", icon="✅")
+            st.toast("Recovery plan approved and logged to audit trail!")
             st.rerun()
             
     with btn_reject:
-        if st.button("❌ Reject Plan (Request Revision)", use_container_width=True):
+        if st.button("Reject Plan (Request Revision)", use_container_width=True):
             st.session_state.plan_approval_status = "REJECTED"
             record_audit("PLAN_REJECTED", planner_name, approval_notes)
-            st.toast("Plan rejected. Revision requested.", icon="⚠️")
+            st.toast("Plan rejected. Revision requested.")
             st.rerun()

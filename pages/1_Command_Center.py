@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 from core.state import init_session_state, run_multi_agent_workflow
-from core.ui_components import apply_custom_css
+from core.ui_components import apply_custom_css, build_three_echelon_network_fig
 
 # Page Configuration
 st.set_page_config(
@@ -45,40 +45,44 @@ sup_df = st.session_state.suppliers_df
 demand_df = st.session_state.demand_df
 
 # Timestamp from audit history or session
-last_updated_ts = "2026-10-10 05:00:00 UTC"
+last_updated_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
 if st.session_state.get("audit_history") and len(st.session_state.audit_history) > 0:
     last_updated_ts = st.session_state.audit_history[0].timestamp
 
 # Supplier Metrics
 disrupted_id = scenario.disrupted_supplier_id
 disrupted_sup_match = sup_df[sup_df["supplier_id"] == disrupted_id]
-disrupted_name = disrupted_sup_match["name"].iloc[0] if not disrupted_sup_match.empty else "Apex Microelectronics (Primary)"
+disrupted_name = disrupted_sup_match["name"].iloc[0] if not disrupted_sup_match.empty else "Primary Supplier"
+disrupted_comp = disrupted_sup_match["component"].iloc[0] if not disrupted_sup_match.empty else "Critical Component"
 
-sup_b_match = sup_df[sup_df["supplier_id"] == "SUP-B"]
-sup_b_cap = int(sup_b_match["daily_capacity"].iloc[0]) if not sup_b_match.empty else 350
-sup_c_match = sup_df[sup_df["supplier_id"] == "SUP-C"]
-sup_c_cap = int(sup_c_match["daily_capacity"].iloc[0]) if not sup_c_match.empty else 300
+backup_sups = sup_df[sup_df["supplier_id"] != disrupted_id]
+total_backup_cap = int(backup_sups["daily_capacity"].sum()) if not backup_sups.empty else 650
 
-# Inventory Metrics for MCU-900 (Critical Component)
-mcu_row = inv_df[inv_df["item_id"] == "MCU-900"].iloc[0]
-current_mcu_stock = int(mcu_row["current_stock"])
-safety_stock_mcu = int(mcu_row["safety_stock"])
-mcu_daily_burn = float(mcu_row["daily_burn_rate"])
+# Inventory Metrics for Critical Component (Dynamic Lookup)
+crit_row = inv_df.iloc[0]
+for _, row in inv_df.iterrows():
+    if any(k in str(row["item_name"]).lower() for k in ["chip", "control", "mcu", "sensor", "fpga", "power", "module", "sic"]):
+        crit_row = row
+        break
+
+crit_item_name = str(crit_row["item_name"])
+current_mcu_stock = int(crit_row["current_stock"])
+safety_stock_mcu = int(crit_row["safety_stock"])
+mcu_daily_burn = float(crit_row["daily_burn_rate"])
 
 inv_findings = wf.get("agent_results", {}).get("inventory", {}).get("findings", {})
 dem_findings = wf.get("agent_results", {}).get("demand", {}).get("findings", {})
 
-avg_daily_demand = dem_findings.get("avg_daily_demand", 430.0)
-runout_days = inv_findings.get("runout_days", round(current_mcu_stock / avg_daily_demand, 2))
-stockout_day = inv_findings.get("stockout_day", 3)
+avg_daily_demand = dem_findings.get("avg_daily_demand", round(float(demand_df["demand_units"].sum()) / max(1, demand_df["day"].nunique()), 1))
+runout_days = inv_findings.get("runout_days", round(current_mcu_stock / max(1.0, avg_daily_demand), 2))
+stockout_day = inv_findings.get("stockout_day", int(np.floor(runout_days)) + 1)
 
 # Demand & At-Risk Orders Calculation
 total_demand_units = int(demand_df["demand_units"].sum())
 total_orders_count = len(demand_df)
-# Customer order batches occurring from stockout onset (Day 3) through end of horizon (Day 14)
 at_risk_orders_df = demand_df[demand_df["day"] >= stockout_day]
 at_risk_orders_count = len(at_risk_orders_df)
-at_risk_orders_pct = round((at_risk_orders_count / total_orders_count) * 100, 1) if total_orders_count > 0 else 85.7
+at_risk_orders_pct = round((at_risk_orders_count / max(1, total_orders_count)) * 100, 1)
 at_risk_demand_units = int(at_risk_orders_df["demand_units"].sum())
 
 # Benchmark and Plan Metrics
@@ -88,30 +92,35 @@ total_landed_cost = plan.total_landed_cost
 recovery_time_days = plan.recovery_time_days
 stockout_days = plan.stockout_duration_days
 
-fill_uplift_vs_erp = round(fill_rate - 55.2, 1)
-fill_uplift_vs_none = round(fill_rate - 14.8, 1)
-cost_savings_erp = bench.get("cost_savings_vs_rule_based", 279814.0) if bench else 279814.0
-cost_savings_none = bench.get("cost_savings_vs_no_action", 536994.0) if bench else 536994.0
+comp_df = bench.get("comparison_df", pd.DataFrame())
+if not comp_df.empty:
+    erp_row = comp_df[comp_df["Strategy"].str.contains("Rule-Based|ERP", case=False, na=False)]
+    none_row = comp_df[comp_df["Strategy"].str.contains("No Action", case=False, na=False)]
+    erp_fill = float(erp_row["Fulfillment Rate (%)"].iloc[0]) if not erp_row.empty else 55.2
+    none_fill = float(none_row["Fulfillment Rate (%)"].iloc[0]) if not none_row.empty else 14.8
+    fill_uplift_vs_erp = round(fill_rate - erp_fill, 1)
+    fill_uplift_vs_none = round(fill_rate - none_fill, 1)
+    erp_cost = float(erp_row["Total Landed Cost ($)"].iloc[0]) if not erp_row.empty else 516968.0
+    none_cost = float(none_row["Total Landed Cost ($)"].iloc[0]) if not none_row.empty else 744788.0
+    cost_savings_erp = round(erp_cost - total_landed_cost, 0)
+    cost_savings_none = round(none_cost - total_landed_cost, 0)
+else:
+    fill_uplift_vs_erp = 40.4
+    fill_uplift_vs_none = 80.8
+    cost_savings_erp = 252758.0
+    cost_savings_none = 480578.0
 
 # Supplier Allocations from Plan
-alloc_b_air = 0
-alloc_b_std = 0
-alloc_c_air = 0
-alloc_c_std = 0
+alloc_air_total = 0
+alloc_std_total = 0
 if plan and hasattr(plan, "allocations"):
     for a in plan.allocations:
-        if a.supplier_id == "SUP-B":
-            if a.shipping_mode == "EXPEDITED_AIR":
-                alloc_b_air += a.allocated_units
-            else:
-                alloc_b_std += a.allocated_units
-        elif a.supplier_id == "SUP-C":
-            if a.shipping_mode == "EXPEDITED_AIR":
-                alloc_c_air += a.allocated_units
-            else:
-                alloc_c_std += a.allocated_units
+        if "EXPEDITED" in a.shipping_mode:
+            alloc_air_total += a.allocated_units
+        else:
+            alloc_std_total += a.allocated_units
 
-total_replenished = alloc_b_air + alloc_b_std + alloc_c_air + alloc_c_std
+total_replenished = alloc_air_total + alloc_std_total
 
 # =========================================================================
 # SCOPED ENTERPRISE STYLING FOR COMMAND CENTER
@@ -502,22 +511,25 @@ st.markdown(f"""
 # Compact scenario control & status bar
 hdr_col1, hdr_col2 = st.columns([4, 1])
 with hdr_col1:
-    st.caption("Active Network Scenario: **Apex Microelectronics (SUP-A) 7-Day Outage** | 3-Echelon Topology: Suppliers ➔ Plant Alpha ➔ Regional DCs")
+    st.caption(f"Active Network Scenario: **{disrupted_name} ({disrupted_id}) {scenario.duration_days}-Day Outage** | 3-Echelon Topology: Suppliers -> Plant Alpha -> Regional DCs")
 with hdr_col2:
-    if st.button("↻ Re-Sync Solver", use_container_width=True):
+    if st.button("Re-Sync Solver", use_container_width=True):
         with st.spinner("Re-evaluating optimization engine..."):
             run_multi_agent_workflow()
-        st.toast("Multi-agent solver telemetry refreshed.", icon="✅")
+        st.toast("Multi-agent solver telemetry refreshed.")
         st.rerun()
 
 # =========================================================================
 # SECTION B: CRITICAL DISRUPTION ALERT
 # =========================================================================
+baseline_unmet_str = f"{comp_df.iloc[0]['Unmet Demand (Units)']:,} units backordered" if not comp_df.empty else "5,170 units backordered"
+baseline_fill_str = f"{comp_df.iloc[0]['Fulfillment Rate (%)']:.1f}% Baseline Fill" if not comp_df.empty else "14.7% Baseline Fill"
+
 st.markdown(f"""
 <div class="cc-alert-banner">
     <div class="cc-alert-head">
         <div class="cc-alert-title">
-            ⚠️ <b>CRITICAL DISRUPTION DETECTED:</b> Primary Supplier Shutdown ({disrupted_name})
+            <span class="ops-status-chip chip-red" style="font-weight:700;">ALERT</span> <b>CRITICAL DISRUPTION DETECTED:</b> Primary Supplier Shutdown ({disrupted_name})
         </div>
         <div>
             <span class="ops-status-chip chip-red">SEVERITY: CRITICAL</span>
@@ -527,15 +539,15 @@ st.markdown(f"""
     <div class="cc-alert-grid">
         <div class="cc-alert-item">
             <span style="color:#94A3B8;">Disrupted Node:</span><br>
-            <b>{disrupted_name} (SUP-A)</b>
+            <b>{disrupted_name} ({disrupted_id})</b>
         </div>
         <div class="cc-alert-item">
             <span style="color:#94A3B8;">Duration & Window:</span><br>
             <b>{scenario.duration_days} Days</b> (Days 1–{scenario.duration_days}, Est. Recovery: Day {scenario.duration_days + 1})
         </div>
         <div class="cc-alert-item">
-            <span style="color:#94A3B8;">Affected Products:</span><br>
-            <b>MCU-900 Chipset</b> & <b>IoT Gateway G-500</b>
+            <span style="color:#94A3B8;">Critical Component:</span><br>
+            <b>{crit_item_name}</b>
         </div>
         <div class="cc-alert-item">
             <span style="color:#94A3B8;">At-Risk Orders:</span><br>
@@ -543,7 +555,7 @@ st.markdown(f"""
         </div>
         <div class="cc-alert-item">
             <span style="color:#94A3B8;">Service-Level Exposure:</span><br>
-            <b>14.8% Baseline Fill</b> ({bench.get('comparison_df', pd.DataFrame()).iloc[0]['Unmet Demand (Units)'] if not bench.get('comparison_df', pd.DataFrame()).empty else 5173:,} units backordered)
+            <b>{baseline_fill_str}</b> ({baseline_unmet_str})
         </div>
         <div class="cc-alert-item">
             <span style="color:#94A3B8;">Recovery Status:</span><br>
@@ -551,7 +563,7 @@ st.markdown(f"""
         </div>
     </div>
     <div class="cc-alert-foot">
-        <span>ℹ <b>Telemetry Integrity Note:</b> Disruption data generated from verified 14-day deterministic scenario model and MILP optimization engine.</span>
+        <span><b>Telemetry Integrity Note:</b> Disruption data generated from verified multi-echelon scenario model and optimization engine.</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -559,7 +571,7 @@ st.markdown(f"""
 # Direct navigation trigger from alert banner
 alert_col1, alert_col2 = st.columns([3, 1])
 with alert_col2:
-    if st.button("Review Recovery Plan in Detail ➔", type="primary", use_container_width=True, key="btn_alert_open_planner"):
+    if st.button("Review Recovery Plan in Detail", type="primary", use_container_width=True, key="btn_alert_open_planner"):
         st.switch_page("pages/3_Recovery_Planner.py")
 
 # =========================================================================
@@ -576,10 +588,10 @@ with kpi_c1:
         </div>
         <div class="cc-kpi-mid">
             <span class="cc-kpi-val">{at_risk_orders_count} <span style="font-size:0.85rem; color:#94A3B8;">({at_risk_orders_pct}%)</span></span>
-            <span class="cc-kpi-icon">📦</span>
+            <span class="ops-status-chip chip-red" style="font-size:0.65rem;">SHORTAGE</span>
         </div>
         <div class="cc-kpi-bot">
-            <span style="color:#10B981; font-weight:600;">✓ AI Protects 35/36 Orders</span>
+            <span style="color:#10B981; font-weight:600;">AI Protects Critical Orders</span>
             <span style="color:#94A3B8;">{total_orders_count} Total Batches</span>
         </div>
     </div>
@@ -590,11 +602,11 @@ with kpi_c2:
     <div class="cc-kpi-card">
         <div class="cc-kpi-top">
             <span class="cc-kpi-label">Inventory Coverage</span>
-            <span class="ops-status-chip chip-amber">RUNWAY: 2.08 DAYS</span>
+            <span class="ops-status-chip chip-amber">RUNWAY: {runout_days} DAYS</span>
         </div>
         <div class="cc-kpi-mid">
             <span class="cc-kpi-val">{runout_days} <span style="font-size:0.85rem; color:#94A3B8;">Days</span></span>
-            <span class="cc-kpi-icon">⏱️</span>
+            <span class="ops-status-chip chip-amber" style="font-size:0.65rem;">BUFFER</span>
         </div>
         <div class="cc-kpi-bot">
             <span style="color:#EF4444; font-weight:600;">Starvation on Day {stockout_day}</span>
@@ -611,11 +623,11 @@ with kpi_c3:
             <span class="ops-status-chip chip-green">100% T1 SLA</span>
         </div>
         <div class="cc-kpi-mid">
-            <span class="cc-kpi-val">{fill_rate}%</span>
-            <span class="cc-kpi-icon">📈</span>
+            <span class="cc-kpi-val">{fill_rate:.1f}%</span>
+            <span class="ops-status-chip chip-green" style="font-size:0.65rem;">SERVICE</span>
         </div>
         <div class="cc-kpi-bot">
-            <span style="color:#10B981; font-weight:600;">+{fill_uplift_vs_erp}% vs ERP</span>
+            <span style="color:#10B981; font-weight:600;">+{fill_uplift_vs_erp:.1f}% vs ERP</span>
             <span style="color:#94A3B8;">{unmet_units:,}u Backorder</span>
         </div>
     </div>
@@ -630,7 +642,7 @@ with kpi_c4:
         </div>
         <div class="cc-kpi-mid">
             <span class="cc-kpi-val">${total_landed_cost/1000:,.1f}K</span>
-            <span class="cc-kpi-icon">💰</span>
+            <span class="ops-status-chip chip-cyan" style="font-size:0.65rem;">SPEND</span>
         </div>
         <div class="cc-kpi-bot">
             <span style="color:#06B6D4; font-weight:600;">Saves ${cost_savings_erp/1000:,.0f}K vs ERP</span>
@@ -647,173 +659,43 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("""
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
     <div style="font-size:0.88rem; font-weight:700; color:#F8FAFC; text-transform:uppercase; letter-spacing:0.04em;">
-        🌐 Three-Echelon Disruption Propagation & Sourcing Flow
+        Three-Echelon Disruption Propagation & Sourcing Flow
     </div>
     <div style="font-size:0.72rem; color:#94A3B8;">
-        Network Propagation: <span style="color:#EF4444;">Primary Disruption</span> ➔ <span style="color:#F59E0B;">Plant Starvation Risk</span> ➔ <span style="color:#10B981;">Regional Fulfillment</span>
+        Network Propagation: <span style="color:#EF4444;">Primary Disruption</span> -> <span style="color:#F59E0B;">Plant Starvation Risk</span> -> <span style="color:#10B981;">Regional Fulfillment</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Build Wide Symmetrical Network Diagram
-def build_clean_three_echelon_fig():
-    fig = go.Figure()
-
-    # Subtle Coordinate Grid Lines
-    for gy in [0.22, 0.50, 0.78]:
-        fig.add_trace(go.Scatter(
-            x=[-0.05, 1.05], y=[gy, gy], mode="lines",
-            line=dict(color="#141B28", width=1, dash="dot"),
-            hoverinfo="none", showlegend=False
-        ))
-    for gx in [0.12, 0.50, 0.88]:
-        fig.add_trace(go.Scatter(
-            x=[gx, gx], y=[0.05, 0.95], mode="lines",
-            line=dict(color="#141B28", width=1, dash="dot"),
-            hoverinfo="none", showlegend=False
-        ))
-
-    # Connection Routes
-    # 1. Disrupted Route: Apex (SUP-A) -> Plant Alpha (Red dashed line)
-    fig.add_trace(go.Scatter(
-        x=[0.14, 0.50], y=[0.76, 0.50],
-        mode="lines",
-        line=dict(color="#EF4444", width=2.5, dash="dash"),
-        hoverinfo="text",
-        hovertext="<b>PRIMARY VENDOR: APEX MICRO (SUP-A) ➔ PLANT ALPHA</b><br>Status: 100% SHUTDOWN (Days 1–7)<br>Inbound Supply: 0 Units/Day (Disrupted)",
-        showlegend=False
-    ))
-
-    # 2. Air Expedited Recovery Route: Beacon (SUP-B) -> Plant Alpha (Purple solid line)
-    fig.add_trace(go.Scatter(
-        x=[0.14, 0.50], y=[0.50, 0.50],
-        mode="lines",
-        line=dict(color="#A855F7", width=3.8),
-        hoverinfo="text",
-        hovertext=f"<b>BACKUP 1: BEACON TECH (SUP-B) ✈️ PLANT ALPHA</b><br>Mode: Air Expedite (700u, Day 3) + Standard Freight (1,050u, Day 6)<br>Total Allocated: {alloc_b_air + alloc_b_std:,} Units",
-        showlegend=False
-    ))
-
-    # 3. Dual-Source Recovery Route: Crestline (SUP-C) -> Plant Alpha (Cyan solid line)
-    fig.add_trace(go.Scatter(
-        x=[0.14, 0.50], y=[0.24, 0.50],
-        mode="lines",
-        line=dict(color="#06B6D4", width=3.5),
-        hoverinfo="text",
-        hovertext=f"<b>BACKUP 2: CRESTLINE COMPONENTS (SUP-C) ✈️ PLANT ALPHA</b><br>Mode: Air Expedite (600u, Day 3) + Standard Freight (900u, Day 5)<br>Total Allocated: {alloc_c_air + alloc_c_std:,} Units",
-        showlegend=False
-    ))
-
-    # 4. Outbound Fulfillment: Plant Alpha -> DC East (Healthcare 100%)
-    fig.add_trace(go.Scatter(
-        x=[0.50, 0.86], y=[0.50, 0.72],
-        mode="lines",
-        line=dict(color="#10B981", width=3.0),
-        hoverinfo="text",
-        hovertext="<b>OUTBOUND: ASSEMBLY PLANT ALPHA ➔ DC EAST</b><br>Tier-1 Healthcare & Emergency Orders: 100% Guaranteed SLA<br>Zero Stockout Penalties",
-        showlegend=False
-    ))
-
-    # 5. Outbound Fulfillment: Plant Alpha -> DC West (Commercial 94%)
-    fig.add_trace(go.Scatter(
-        x=[0.50, 0.86], y=[0.50, 0.28],
-        mode="lines",
-        line=dict(color="#3B82F6", width=2.5),
-        hoverinfo="text",
-        hovertext="<b>OUTBOUND: ASSEMBLY PLANT ALPHA ➔ DC WEST</b><br>Tier-2 Enterprise & Tier-3 Retail Orders: 94.2% Service Level<br>Residual Deferred Backorders: 264 Units",
-        showlegend=False
-    ))
-
-    # Symmetrical Node Layout
-    nodes = [
-        # Echelon 1: Suppliers
-        {"id": "SUP-A", "label": "Apex Micro (SUP-A)<br><span style='color:#EF4444;'>SHUTDOWN [0 u/d]</span>", "x": 0.14, "y": 0.76, "sym": "circle-x", "color": "#1F1216", "border": "#EF4444", "size": 24, "desc": "Tier-1 Primary Vendor (7-Day Shutdown, Recovery Day 8)"},
-        {"id": "SUP-B", "label": f"Beacon Tech (SUP-B)<br><span style='color:#A855F7;'>ACTIVE [{alloc_b_air + alloc_b_std:,} u]</span>", "x": 0.14, "y": 0.50, "sym": "circle", "color": "#1A1426", "border": "#A855F7", "size": 22, "desc": "Qualified Backup Supplier 1 (350 u/d capacity, 2d air expedite)"},
-        {"id": "SUP-C", "label": f"Crestline (SUP-C)<br><span style='color:#06B6D4;'>ACTIVE [{alloc_c_air + alloc_c_std:,} u]</span>", "x": 0.14, "y": 0.24, "sym": "circle", "color": "#101D26", "border": "#06B6D4", "size": 22, "desc": "Qualified Backup Supplier 2 (300 u/d capacity, 2d air expedite)"},
-        
-        # Echelon 2: Central Assembly Plant
-        {"id": "PLANT-ALPHA", "label": "Assembly Plant Alpha<br><span style='color:#F59E0B;'>RUNWAY: 2.08 DAYS</span>", "x": 0.50, "y": 0.50, "sym": "square", "color": "#221911", "border": "#F59E0B", "size": 28, "desc": "Central Manufacturing Hub (450 u/d assembly capacity; line starved on Day 3 without air bridge)"},
-        
-        # Echelon 3: Downstream Regional DCs
-        {"id": "DC-EAST", "label": "Fulfillment Hub East (DC)<br><span style='color:#10B981;'>TIER-1 SLA: 100%</span>", "x": 0.86, "y": 0.72, "sym": "diamond", "color": "#11221A", "border": "#10B981", "size": 22, "desc": "DC East: Healthcare & High-Priority Infrastructure Customers"},
-        {"id": "DC-WEST", "label": "Fulfillment Hub West (DC)<br><span style='color:#3B82F6;'>TIER-2/3 SLA: 94.2%</span>", "x": 0.86, "y": 0.28, "sym": "diamond", "color": "#121A2B", "border": "#3B82F6", "size": 22, "desc": "DC West: Commercial Telecom & Standard Retail Customers"}
-    ]
-    ndf = pd.DataFrame(nodes)
-
-    fig.add_trace(go.Scatter(
-        x=ndf["x"], y=ndf["y"],
-        mode="markers+text",
-        marker=dict(
-            symbol=ndf["sym"],
-            size=ndf["size"],
-            color=ndf["color"],
-            line=dict(color=ndf["border"], width=2.5)
-        ),
-        text=ndf["label"],
-        textposition="top center",
-        textfont=dict(color="#F1F5F9", size=9.5, family="Inter"),
-        hoverinfo="text",
-        hovertext=[f"<b>{n['id']}</b><br>{n['desc']}" for n in nodes],
-        showlegend=False
-    ))
-
-    # Echelon Column Headers
-    fig.add_annotation(x=0.14, y=0.98, text="<b>ECHELON 1: TIER-1 SUPPLIERS</b>", showarrow=False, font=dict(color="#94A3B8", size=9.5, family="Inter"))
-    fig.add_annotation(x=0.50, y=0.98, text="<b>ECHELON 2: CENTRAL MANUFACTURING</b>", showarrow=False, font=dict(color="#94A3B8", size=9.5, family="Inter"))
-    fig.add_annotation(x=0.86, y=0.98, text="<b>ECHELON 3: REGIONAL DISTRIBUTION</b>", showarrow=False, font=dict(color="#94A3B8", size=9.5, family="Inter"))
-
-    # Symmetrical Legend Footer
-    fig.add_annotation(
-        x=0.5, y=-0.04,
-        text="● <span style='color:#EF4444;'>Disrupted Lane (0 Inbound Flow)</span> &nbsp;&nbsp;|&nbsp;&nbsp; ● <span style='color:#A855F7;'>Air Expedited Bridge (Day 3 Arrival)</span> &nbsp;&nbsp;|&nbsp;&nbsp; ● <span style='color:#06B6D4;'>Dual-Source Standard Freight</span> &nbsp;&nbsp;|&nbsp;&nbsp; ■ <span style='color:#F59E0B;'>Assembly Hub</span> &nbsp;&nbsp;|&nbsp;&nbsp; ◆ <span style='color:#10B981;'>DC Hubs</span>",
-        showarrow=False,
-        font=dict(color="#94A3B8", size=9.2, family="Inter"),
-        xref="paper", yref="paper"
-    )
-
-    fig.update_layout(
-        height=320,
-        autosize=True,
-        margin=dict(l=15, r=15, t=25, b=25),
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.02, 1.02]),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0.08, 1.04]),
-        plot_bgcolor="#0A0E1A",
-        paper_bgcolor="#0A0E1A"
-    )
-    return fig
-
-st.plotly_chart(build_clean_three_echelon_fig(), use_container_width=True, config={"displayModeBar": False})
+# Render Plotly Network Diagram from core.ui_components
+fig_net = build_three_echelon_network_fig(disrupted_id, plan, sup_df, inv_df, demand_df)
+st.plotly_chart(fig_net, use_container_width=True, config={"displayModeBar": False})
 
 # Symmetrical 3-Echelon Stage Detail Cards
 stage_c1, stage_c2, stage_c3 = st.columns(3)
 
 with stage_c1:
+    sup_rows_html = "".join([
+        f"""<div class="cc-stage-metric-row">
+            <span class="cc-stage-metric-label">{s['name'].split('(')[0]}:</span>
+            <span class="cc-stage-metric-val" style="color:{'#EF4444' if s['supplier_id'] == disrupted_id else '#10B981'};">
+                {'SHUTDOWN' if s['supplier_id'] == disrupted_id else f"Active ({s['daily_capacity']} u/d)"}
+            </span>
+        </div>"""
+        for s in sup_df.to_dict(orient="records")[:3]
+    ])
+    
     st.markdown(f"""
     <div class="cc-stage-card">
         <div class="cc-stage-header">
-            <span class="cc-stage-title">🏭 Stage 1: Suppliers</span>
+            <span class="cc-stage-title">Stage 1: Suppliers</span>
             <span class="ops-status-chip chip-red">1 CRITICAL OUTAGE</span>
         </div>
         <div class="cc-stage-body">
-            <div class="cc-stage-metric-row">
-                <span class="cc-stage-metric-label">Apex Micro (SUP-A):</span>
-                <span class="cc-stage-metric-val" style="color:#EF4444;">SHUTDOWN (0 u/day)</span>
-            </div>
-            <div class="cc-stage-metric-row">
-                <span class="cc-stage-metric-label">Outage Duration:</span>
-                <span class="cc-stage-metric-val">7 Days (Recov: Day 8)</span>
-            </div>
-            <div class="cc-stage-metric-row">
-                <span class="cc-stage-metric-label">Beacon Tech (SUP-B):</span>
-                <span class="cc-stage-metric-val" style="color:#10B981;">Active ({sup_b_cap} u/d cap)</span>
-            </div>
-            <div class="cc-stage-metric-row">
-                <span class="cc-stage-metric-label">Crestline Comp (SUP-C):</span>
-                <span class="cc-stage-metric-val" style="color:#10B981;">Active ({sup_c_cap} u/d cap)</span>
-            </div>
+            {sup_rows_html}
             <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Available Backup Capacity:</span>
-                <span class="cc-stage-metric-val" style="color:#06B6D4;">{sup_b_cap + sup_c_cap} Units/Day</span>
+                <span class="cc-stage-metric-val" style="color:#06B6D4;">{total_backup_cap} Units/Day</span>
             </div>
         </div>
     </div>
@@ -823,8 +705,8 @@ with stage_c2:
     st.markdown(f"""
     <div class="cc-stage-card">
         <div class="cc-stage-header">
-            <span class="cc-stage-title">⚙️ Stage 2: Manufacturer</span>
-            <span class="ops-status-chip chip-amber">STARVATION: DAY 3</span>
+            <span class="cc-stage-title">Stage 2: Assembly Manufacturing</span>
+            <span class="ops-status-chip chip-amber">STARVATION: DAY {stockout_day}</span>
         </div>
         <div class="cc-stage-body">
             <div class="cc-stage-metric-row">
@@ -833,19 +715,15 @@ with stage_c2:
             </div>
             <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Component Availability:</span>
-                <span class="cc-stage-metric-val" style="color:#F59E0B;">MCU-900 ({current_mcu_stock:,} u stock)</span>
+                <span class="cc-stage-metric-val" style="color:#F59E0B;">{crit_item_name} ({current_mcu_stock:,} u)</span>
             </div>
             <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Buffer Runway:</span>
                 <span class="cc-stage-metric-val" style="color:#EF4444;">{runout_days} Days Remaining</span>
             </div>
             <div class="cc-stage-metric-row">
-                <span class="cc-stage-metric-label">Assembly Plant Capacity:</span>
-                <span class="cc-stage-metric-val">450 Units/Day</span>
-            </div>
-            <div class="cc-stage-metric-row">
-                <span class="cc-stage-metric-label">Affected Production Orders:</span>
-                <span class="cc-stage-metric-val" style="color:#FCA5A5;">3,010 Units at Risk</span>
+                <span class="cc-stage-metric-label">Average Daily Consumption:</span>
+                <span class="cc-stage-metric-val">{avg_daily_demand:.0f} Units/Day</span>
             </div>
         </div>
     </div>
@@ -855,7 +733,7 @@ with stage_c3:
     st.markdown(f"""
     <div class="cc-stage-card">
         <div class="cc-stage-header">
-            <span class="cc-stage-title">🚚 Stage 3: Distributor</span>
+            <span class="cc-stage-title">Stage 3: Customer Distribution</span>
             <span class="ops-status-chip chip-cyan">{at_risk_orders_pct}% ORDERS AT RISK</span>
         </div>
         <div class="cc-stage-body">
@@ -864,20 +742,16 @@ with stage_c3:
                 <span class="cc-stage-metric-val">DC East & DC West</span>
             </div>
             <div class="cc-stage-metric-row">
-                <span class="cc-stage-metric-label">Finished Goods Buffer (FG-500):</span>
-                <span class="cc-stage-metric-val" style="color:#EF4444;">350 u (0.83d buffer)</span>
-            </div>
-            <div class="cc-stage-metric-row">
-                <span class="cc-stage-metric-label">Projected DC Stockout:</span>
-                <span class="cc-stage-metric-val" style="color:#EF4444;">Day 2 Onset</span>
-            </div>
-            <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Customer Orders at Risk:</span>
                 <span class="cc-stage-metric-val" style="color:#FCA5A5;">{at_risk_orders_count} of {total_orders_count} Batches</span>
             </div>
             <div class="cc-stage-metric-row">
                 <span class="cc-stage-metric-label">Tier-1 Priority SLA:</span>
                 <span class="cc-stage-metric-val" style="color:#10B981;">100% Guaranteed</span>
+            </div>
+            <div class="cc-stage-metric-row">
+                <span class="cc-stage-metric-label">Overall Service Level:</span>
+                <span class="cc-stage-metric-val" style="color:#10B981;">{fill_rate:.1f}% Projected Fill</span>
             </div>
         </div>
     </div>
@@ -894,45 +768,36 @@ with risk_col1:
     st.markdown("""
     <div class="cc-panel">
         <div class="cc-panel-title-bar">
-            <span class="cc-panel-title">📦 Inventory & Stockout Risk</span>
+            <span class="cc-panel-title">Inventory & Stockout Runway</span>
             <span class="ops-status-chip chip-amber">RUNOUT ANALYSIS</span>
         </div>
     """, unsafe_allow_html=True)
 
-    # Product runway comparison chart
-    products_data = [
-        {"Product": "FG-500 IoT Gateway", "Runway": 0.83, "Stock": 350, "Burn": 420, "Stockout": "Day 2", "Color": "#EF4444", "Status": "SEVERE RISK"},
-        {"Product": "MCU-900 Control Chip", "Runway": 2.08, "Stock": 900, "Burn": 430, "Stockout": "Day 3", "Color": "#F59E0B", "Status": "CRITICAL RISK"},
-        {"Product": "CH-10 Chassis Enclosure", "Runway": 5.56, "Stock": 2500, "Burn": 450, "Stockout": "Day 6", "Color": "#10B981", "Status": "STABLE BUFFER"}
-    ]
-    p_df = pd.DataFrame(products_data)
+    # Dynamic product runway chart from inv_df
+    p_df = inv_df.copy()
+    p_df["Runway"] = (p_df["current_stock"] / max(1.0, avg_daily_demand)).round(2)
+    p_df["Color"] = p_df["Runway"].apply(lambda r: "#EF4444" if r < 2.0 else ("#F59E0B" if r < 4.0 else "#10B981"))
 
     fig_inv = go.Figure()
     fig_inv.add_trace(go.Bar(
-        y=p_df["Product"],
+        y=p_df["item_name"],
         x=p_df["Runway"],
         orientation="h",
-        marker=dict(
-            color=p_df["Color"],
-            line=dict(color="#1E293B", width=1)
-        ),
-        text=[f"<b>{r:.2f} Days</b> (Stockout: {s})" for r, s in zip(p_df["Runway"], p_df["Stockout"])],
+        marker=dict(color=p_df["Color"], line=dict(color="#1E293B", width=1)),
+        text=[f"<b>{r:.2f} Days</b>" for r in p_df["Runway"]],
         textposition="inside",
         textfont=dict(color="#FFFFFF", size=10, family="Inter"),
         hoverinfo="text",
-        hovertext=[f"<b>{p}</b><br>On-Hand: {stk:,} units<br>Daily Burn: {b}/day<br>Runway: {r} Days<br>Status: {stat}" 
-                   for p, stk, b, r, stat in zip(p_df["Product"], p_df["Stock"], p_df["Burn"], p_df["Runway"], p_df["Status"])]
+        hovertext=[f"<b>{row['item_name']}</b><br>Stock: {row['current_stock']:,}<br>Runway: {row['Runway']} Days" for _, row in p_df.iterrows()]
     ))
 
-    # Add vertical line for outage duration (7 days)
-    fig_inv.add_vline(x=7.0, line_dash="dash", line_color="#EF4444", annotation_text="7-Day Outage", annotation_position="top right", annotation_font_size=9, annotation_font_color="#EF4444")
-    # Add vertical line for safety threshold (2.0 days)
+    fig_inv.add_vline(x=float(scenario.duration_days), line_dash="dash", line_color="#EF4444", annotation_text=f"{scenario.duration_days}d Outage", annotation_position="top right", annotation_font_size=9, annotation_font_color="#EF4444")
     fig_inv.add_vline(x=2.0, line_dash="dot", line_color="#F59E0B", annotation_text="Min Buffer", annotation_position="bottom right", annotation_font_size=9, annotation_font_color="#F59E0B")
 
     fig_inv.update_layout(
         height=190,
         margin=dict(l=10, r=20, t=20, b=20),
-        xaxis=dict(title="Buffer Coverage Runway (Days)", showgrid=True, gridcolor="#162032", range=[0, 8]),
+        xaxis=dict(title="Buffer Coverage Runway (Days)", showgrid=True, gridcolor="#162032", range=[0, max(8, scenario.duration_days + 2)]),
         yaxis=dict(showgrid=False),
         plot_bgcolor="#0A0E1A",
         paper_bgcolor="#0A0E1A",
@@ -941,43 +806,32 @@ with risk_col1:
     st.plotly_chart(fig_inv, use_container_width=True, config={"displayModeBar": False})
 
     # Structured Inventory Risk Table
-    st.markdown("""
+    inv_table_rows = "".join([
+        f"""<tr>
+            <td><b>{row['item_name']}</b></td>
+            <td>{row['current_stock']:,} u</td>
+            <td>{row.get('daily_burn_rate', avg_daily_demand):.0f} u</td>
+            <td><b>{row.get('runout_days', round(row['current_stock']/max(1.0, avg_daily_demand), 2))} d</b></td>
+            <td><span class="ops-status-chip {'chip-red' if row.get('runout_days', 2.0) < 2.0 else ('chip-amber' if row.get('runout_days', 2.0) < 4.0 else 'chip-green')}" style="font-size:0.62rem;">
+                {'SEVERE' if row.get('runout_days', 2.0) < 2.0 else ('MODERATE' if row.get('runout_days', 2.0) < 4.0 else 'STABLE')}
+            </span></td>
+        </tr>"""
+        for _, row in inv_df.iterrows()
+    ])
+
+    st.markdown(f"""
     <table class="cc-benchmark-table">
         <thead>
             <tr>
-                <th>Product / Component</th>
+                <th>Component</th>
                 <th>Current Stock</th>
                 <th>Burn / Day</th>
                 <th>Runway</th>
-                <th>Starvation Day</th>
                 <th>Status</th>
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td><b>FG-500 Finished Gateway</b></td>
-                <td>350 u</td>
-                <td>420 u</td>
-                <td><b>0.83 d</b></td>
-                <td><span style="color:#EF4444; font-weight:700;">Day 2</span></td>
-                <td><span class="ops-status-chip chip-red" style="font-size:0.62rem;">DEPLETES FIRST</span></td>
-            </tr>
-            <tr class="active-row">
-                <td><b>MCU-900 Control Chip</b></td>
-                <td>900 u</td>
-                <td>430 u</td>
-                <td><b>2.08 d</b></td>
-                <td><span style="color:#EF4444; font-weight:700;">Day 3</span></td>
-                <td><span class="ops-status-chip chip-amber" style="font-size:0.62rem;">CRITICAL BOTTLE</span></td>
-            </tr>
-            <tr>
-                <td><b>CH-10 Enclosure Chassis</b></td>
-                <td>2,500 u</td>
-                <td>450 u</td>
-                <td>5.56 d</td>
-                <td><span style="color:#10B981;">Day 6</span></td>
-                <td><span class="ops-status-chip chip-green" style="font-size:0.62rem;">ADEQUATE</span></td>
-            </tr>
+            {inv_table_rows}
         </tbody>
     </table>
     </div>
@@ -987,39 +841,28 @@ with risk_col2:
     st.markdown("""
     <div class="cc-panel">
         <div class="cc-panel-title-bar">
-            <span class="cc-panel-title">⚖️ Supply Chain Risk Distribution</span>
+            <span class="cc-panel-title">Supply Chain Risk Distribution</span>
             <span class="ops-status-chip chip-cyan">ECHELON EXPOSURE</span>
         </div>
     """, unsafe_allow_html=True)
 
-    # Risk Distribution Bar Chart across 3 Echelons
-    # Derived from mathematical model parameters:
-    # Supplier: 100% capacity loss unmitigated vs 14% mitigated residual risk
-    # Manufacturing: 76% starvation risk unmitigated vs 8% mitigated residual risk
-    # Distribution: 86% SLA breach risk unmitigated vs 4% mitigated residual risk
     stages_risk = ["Distribution (DCs & SLAs)", "Manufacturing (Plant Alpha)", "Suppliers (Tier-1 Sourcing)"]
     unmitigated_risk = [85.7, 76.0, 88.0]
     mitigated_risk = [4.3, 8.0, 14.3]
 
     fig_risk = go.Figure()
     fig_risk.add_trace(go.Bar(
-        y=stages_risk,
-        x=unmitigated_risk,
-        orientation="h",
-        name="Unmitigated Disruption Risk",
+        y=stages_risk, x=unmitigated_risk, orientation="h",
+        name="Unmitigated Risk",
         marker=dict(color="#EF4444", line=dict(color="#7F1D1D", width=1)),
-        text=[f"{v:.1f}%" for v in unmitigated_risk],
-        textposition="inside",
+        text=[f"{v:.1f}%" for v in unmitigated_risk], textposition="inside",
         textfont=dict(color="#FFFFFF", size=9.5, family="Inter")
     ))
     fig_risk.add_trace(go.Bar(
-        y=stages_risk,
-        x=mitigated_risk,
-        orientation="h",
-        name="ResilientAI Mitigated Risk",
+        y=stages_risk, x=mitigated_risk, orientation="h",
+        name="Mitigated Risk",
         marker=dict(color="#10B981", line=dict(color="#065F46", width=1)),
-        text=[f"{v:.1f}%" for v in mitigated_risk],
-        textposition="inside",
+        text=[f"{v:.1f}%" for v in mitigated_risk], textposition="inside",
         textfont=dict(color="#FFFFFF", size=9.5, family="Inter")
     ))
 
@@ -1036,13 +879,12 @@ with risk_col2:
     )
     st.plotly_chart(fig_risk, use_container_width=True, config={"displayModeBar": False})
 
-    # Risk distribution summary commentary
-    st.markdown(f"""
+    st.markdown("""
     <div style="background:#0F1424; border:1px solid #1A2438; border-radius:6px; padding:10px 12px; font-size:0.73rem; color:#CBD5E1; line-height:1.45;">
         <b>Echelon Risk Breakdown:</b><br>
-        &bull; <b>Supplier Stage:</b> Dual-sourcing contracts with Beacon Tech & Crestline reduce sourcing single-point failure by <b>73.7%</b>.<br>
-        &bull; <b>Manufacturing Stage:</b> Air expediting 1,300 units on Day 3 prevents factory shutdown, cutting line starvation exposure by <b>68.0%</b>.<br>
-        &bull; <b>Distribution Stage:</b> Tier-based SLA prioritization reduces critical healthcare penalty exposure to <b>0.0%</b>, maintaining <b>95.7%</b> overall fill rate.
+        &bull; <b>Supplier Stage:</b> Dual-sourcing contracts mitigate single-point failure by distributing volume.<br>
+        &bull; <b>Manufacturing Stage:</b> Air expediting directly closes the buffer depletion gap before factory stoppage.<br>
+        &bull; <b>Distribution Stage:</b> Tier-based SLA prioritization secures 100% fulfillment for Tier-1 critical accounts.
     </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1050,23 +892,21 @@ with risk_col2:
 # =========================================================================
 # SECTION F: RECOMMENDED RECOVERY ACTION (FULL-WIDTH PROMINENT PANEL)
 # =========================================================================
-# Dynamic extraction of benchmark comparison metrics
-comp_df = bench.get("comparison_df") if bench else pd.DataFrame()
 if not comp_df.empty and len(comp_df) >= 3:
     row_none = comp_df.iloc[0]
     row_erp = comp_df.iloc[1]
     row_res = comp_df.iloc[2]
     
-    fill_none = float(row_none.get("Fulfillment Rate (%)", 14.8))
-    unmet_none = int(row_none.get("Unmet Demand (Units)", 5173))
-    cost_none = float(row_none.get("Total Landed Cost ($)", 803355))
+    fill_none = float(row_none.get("Fulfillment Rate (%)", 14.7))
+    unmet_none = int(row_none.get("Unmet Demand (Units)", 5170))
+    cost_none = float(row_none.get("Total Landed Cost ($)", 744788))
     stockout_none = int(row_none.get("Stockout Duration (Days)", 8))
     recov_none = int(row_none.get("Recovery Time (Days)", 15))
     
-    fill_erp = float(row_erp.get("Fulfillment Rate (%)", 55.2))
-    unmet_erp = int(row_erp.get("Unmet Demand (Units)", 2723))
-    cost_erp = float(row_erp.get("Total Landed Cost ($)", 546175))
-    stockout_erp = int(row_erp.get("Stockout Duration (Days)", 4))
+    fill_erp = float(row_erp.get("Fulfillment Rate (%)", 55.1))
+    unmet_erp = int(row_erp.get("Unmet Demand (Units)", 2720))
+    cost_erp = float(row_erp.get("Total Landed Cost ($)", 516968))
+    stockout_erp = int(row_erp.get("Stockout Duration (Days)", 3))
     recov_erp = int(row_erp.get("Recovery Time (Days)", 12))
     
     fill_res = float(row_res.get("Fulfillment Rate (%)", fill_rate))
@@ -1075,15 +915,26 @@ if not comp_df.empty and len(comp_df) >= 3:
     stockout_res = int(row_res.get("Stockout Duration (Days)", stockout_days))
     recov_res = int(row_res.get("Recovery Time (Days)", recovery_time_days))
 else:
-    fill_none, unmet_none, cost_none, stockout_none, recov_none = 14.8, 5173, 803355.0, 8, 15
-    fill_erp, unmet_erp, cost_erp, stockout_erp, recov_erp = 55.2, 2723, 546175.0, 4, 12
+    fill_none, unmet_none, cost_none, stockout_none, recov_none = 14.7, 5170, 744788.0, 8, 15
+    fill_erp, unmet_erp, cost_erp, stockout_erp, recov_erp = 55.1, 2720, 516968.0, 3, 12
     fill_res, unmet_res, cost_res, stockout_res, recov_res = fill_rate, unmet_units, total_landed_cost, stockout_days, recovery_time_days
 
-# Render Section F using st.html to prevent markdown code-block indentation interpretation
+# Generate PO cards dynamically from plan allocations
+alloc_cards_html = ""
+for idx, a in enumerate(plan.allocations):
+    border_color = "#A855F7" if "EXPEDITED" in a.shipping_mode else "#06B6D4"
+    alloc_cards_html += f"""
+    <div style="background:#0F1524; border:1px solid #1E293B; border-left:3px solid {border_color}; border-radius:6px; padding:8px 10px;">
+        <div style="font-size:0.65rem; color:#94A3B8; text-transform:uppercase; font-weight:700;">PO #{idx+1} &bull; {a.supplier_name.split('(')[0].strip().upper()}</div>
+        <div style="font-size:0.88rem; font-weight:800; color:#F8FAFC; margin:2px 0;">{a.allocated_units:,} Units &bull; Lands Day {a.arrival_day}</div>
+        <div style="font-size:0.68rem; color:{border_color};">{'Expedited Air' if 'EXPEDITED' in a.shipping_mode else 'Standard Freight'} (${a.freight_cost_per_unit:.2f}/u freight)</div>
+    </div>
+    """
+
 rec_html = f"""<div class="cc-rec-panel">
 <div class="cc-rec-header">
 <div class="cc-rec-title">
-🎯 <b>AI-Recommended Recovery Plan</b>
+<b>AI-Recommended Recovery Plan</b>
 </div>
 <div>
 <span class="ops-status-chip chip-purple">STATUS: SYNTHESIZED • READY FOR REVIEW</span>
@@ -1094,34 +945,14 @@ rec_html = f"""<div class="cc-rec-panel">
 <div style="font-size:0.80rem; color:#E2E8F0; line-height:1.5; margin-bottom:10px;">
 <b>Primary Recommended Sourcing & Logistics Action:</b><br>
 <span style="color:#CBD5E1;">
-Implement <b>Dual-Source Expedited Air Replenishment with Critical Tier Rationing</b>.
-Dispatch <b>{alloc_b_air:,} units via Air Expedite</b> from Beacon Tech Solutions (lands Day 3) and <b>{alloc_c_air:,} units via Air Expedite</b> from Crestline Components (lands Day 3) to bridge Plant Alpha's {runout_days:.2f}-day buffer runway before starvation. Simultaneously dispatch <b>{alloc_b_std:,} units</b> (Beacon) and <b>{alloc_c_std:,} units</b> (Crestline) via Standard Freight (landing Days 5–6) for sustained operational stabilization. Total recovery volume: <b>{total_replenished:,} units</b> across 4 coordinated purchase orders.
+{plan.executive_summary}
 </span>
 </div>
 <div style="background:#0D1322; border-left:3px solid #06B6D4; padding:9px 14px; border-radius:4px; font-size:0.74rem; color:#CBD5E1; margin-bottom:12px; line-height:1.45;">
-💡 <b>Data-Grounded Rationale:</b> Multi-Agent Coordinator resolved conflicting agent proposals by solving a Mixed-Integer Linear Program (MILP). Expediting exactly {alloc_b_air + alloc_c_air:,} units via air bridges the {runout_days:.2f}-day MCU-900 buffer runway gap before line starvation occurs on Day {stockout_day}. Routing the remaining volume via standard ground eliminates $44,550 in avoidable air surcharges while guaranteeing 100% on-time delivery for Tier-1 Healthcare orders.
+<b>Data-Grounded Rationale:</b> Multi-Agent Coordinator resolved conflicting agent proposals by solving an optimization model. Expediting emergency replenishment bridges the {runout_days:.2f}-day buffer runway gap before line starvation on Day {stockout_day}, while sustained standard freight stabilizes the network.
 </div>
 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:8px; margin-bottom:14px;">
-<div style="background:#0F1524; border:1px solid #1E293B; border-left:3px solid #A855F7; border-radius:6px; padding:8px 10px;">
-<div style="font-size:0.65rem; color:#94A3B8; text-transform:uppercase; font-weight:700;">PO #1 &bull; BEACON TECH (AIR)</div>
-<div style="font-size:0.88rem; font-weight:800; color:#F8FAFC; margin:2px 0;">{alloc_b_air:,} Units &bull; Lands Day 3</div>
-<div style="font-size:0.68rem; color:#A855F7;">Expedited Air ($16.50/u freight)</div>
-</div>
-<div style="background:#0F1524; border:1px solid #1E293B; border-left:3px solid #06B6D4; border-radius:6px; padding:8px 10px;">
-<div style="font-size:0.65rem; color:#94A3B8; text-transform:uppercase; font-weight:700;">PO #2 &bull; CRESTLINE (AIR)</div>
-<div style="font-size:0.88rem; font-weight:800; color:#F8FAFC; margin:2px 0;">{alloc_c_air:,} Units &bull; Lands Day 3</div>
-<div style="font-size:0.68rem; color:#06B6D4;">Expedited Air ($15.00/u freight)</div>
-</div>
-<div style="background:#0F1524; border:1px solid #1E293B; border-left:3px solid #10B981; border-radius:6px; padding:8px 10px;">
-<div style="font-size:0.65rem; color:#94A3B8; text-transform:uppercase; font-weight:700;">PO #3 &bull; CRESTLINE (GROUND)</div>
-<div style="font-size:0.88rem; font-weight:800; color:#F8FAFC; margin:2px 0;">{alloc_c_std:,} Units &bull; Lands Day 5</div>
-<div style="font-size:0.68rem; color:#10B981;">Standard Freight ($5.50/u freight)</div>
-</div>
-<div style="background:#0F1524; border:1px solid #1E293B; border-left:3px solid #3B82F6; border-radius:6px; padding:8px 10px;">
-<div style="font-size:0.65rem; color:#94A3B8; text-transform:uppercase; font-weight:700;">PO #4 &bull; BEACON TECH (GROUND)</div>
-<div style="font-size:0.88rem; font-weight:800; color:#F8FAFC; margin:2px 0;">{alloc_b_std:,} Units &bull; Lands Day 6</div>
-<div style="font-size:0.68rem; color:#3B82F6;">Standard Freight ($6.00/u freight)</div>
-</div>
+{alloc_cards_html}
 </div>
 <div class="cc-rec-stats-grid">
 <div class="cc-rec-stat-card">
@@ -1137,23 +968,23 @@ Dispatch <b>{alloc_b_air:,} units via Air Expedite</b> from Beacon Tech Solution
 <div class="cc-rec-stat-card">
 <div class="cc-rec-stat-label">Recovery Horizon</div>
 <div class="cc-rec-stat-val" style="color:#A855F7;">{recov_res} Days</div>
-<div class="cc-rec-stat-sub">3 days faster than ERP</div>
+<div class="cc-rec-stat-sub">Stabilization window</div>
 </div>
 <div class="cc-rec-stat-card">
-<div class="cc-rec-stat-label">Protected Orders</div>
-<div class="cc-rec-stat-val" style="color:#10B981;">35 of 36</div>
+<div class="cc-rec-stat-label">Fulfillment Status</div>
+<div class="cc-rec-stat-val" style="color:#10B981;">{fill_res:.1f}%</div>
 <div class="cc-rec-stat-sub">100% Tier-1 Guaranteed</div>
 </div>
 <div class="cc-rec-stat-card">
 <div class="cc-rec-stat-label">Residual Service Risk</div>
 <div class="cc-rec-stat-val" style="color:#F59E0B;">{unmet_res:,} u</div>
-<div class="cc-rec-stat-sub">Tier-3 Retail Only &bull; 0 Violations</div>
+<div class="cc-rec-stat-sub">Non-critical backlog</div>
 </div>
 </div>
 <div style="margin-top:14px;">
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
 <span style="font-size:0.74rem; font-weight:700; color:#F1F5F9; text-transform:uppercase;">
-📊 Tri-Way Strategy Comparison (14-Day Planning Horizon)
+Tri-Way Strategy Comparison (14-Day Planning Horizon)
 </span>
 <div style="display:flex; gap:6px;">
 <span class="ops-status-chip chip-green" style="font-size:0.62rem;">CAPACITY LIMIT: PASSED</span>
@@ -1170,7 +1001,7 @@ Dispatch <b>{alloc_b_air:,} units via Air Expedite</b> from Beacon Tech Solution
 <th>Total Landed Cost</th>
 <th>Stockout Days</th>
 <th>Recovery Time</th>
-<th>Tier-1 Healthcare SLA</th>
+<th>Tier-1 SLA</th>
 <th>Constraint Status</th>
 </tr>
 </thead>
@@ -1182,7 +1013,7 @@ Dispatch <b>{alloc_b_air:,} units via Air Expedite</b> from Beacon Tech Solution
 <td>${cost_none:,.0f}</td>
 <td>{stockout_none} Days</td>
 <td>{recov_none} Days</td>
-<td><span style="color:#EF4444;">Failed (18% fill)</span></td>
+<td><span style="color:#EF4444;">Failed</span></td>
 <td><span class="ops-status-chip chip-red" style="font-size:0.60rem;">3 VIOLATIONS</span></td>
 </tr>
 <tr>
@@ -1192,7 +1023,7 @@ Dispatch <b>{alloc_b_air:,} units via Air Expedite</b> from Beacon Tech Solution
 <td>${cost_erp:,.0f}</td>
 <td>{stockout_erp} Days</td>
 <td>{recov_erp} Days</td>
-<td><span style="color:#F59E0B;">Breach (62% fill)</span></td>
+<td><span style="color:#F59E0B;">Breach</span></td>
 <td><span class="ops-status-chip chip-amber" style="font-size:0.60rem;">1 VIOLATION</span></td>
 </tr>
 <tr class="active-row">
@@ -1200,7 +1031,7 @@ Dispatch <b>{alloc_b_air:,} units via Air Expedite</b> from Beacon Tech Solution
 <td><span style="color:#10B981; font-weight:800;">{fill_res:.1f}%</span></td>
 <td><span style="color:#10B981; font-weight:800;">{unmet_res:,} units</span></td>
 <td><span style="color:#06B6D4; font-weight:800;">${cost_res:,.0f}</span></td>
-<td><b>{stockout_res} Day (Transition)</b></td>
+<td><b>{stockout_res} Day</b></td>
 <td><b>{recov_res} Days</b></td>
 <td><span style="color:#10B981; font-weight:800;">100.0% Guaranteed</span></td>
 <td><span class="ops-status-chip chip-green" style="font-size:0.60rem;">0 VIOLATIONS (OPTIMAL)</span></td>
@@ -1211,20 +1042,20 @@ Dispatch <b>{alloc_b_air:,} units via Air Expedite</b> from Beacon Tech Solution
 </div>"""
 st.html(rec_html)
 
-# Two Action Navigation Buttons with explicit keys
+# Two Action Navigation Buttons
 rec_btn_c1, rec_btn_c2, rec_btn_c3 = st.columns([1.2, 1.2, 2.0])
 
 with rec_btn_c1:
-    if st.button("🎯 Review Recovery Plan", type="primary", use_container_width=True, key="btn_rec_review_plan"):
+    if st.button("Review Recovery Plan", type="primary", use_container_width=True, key="btn_rec_review_plan"):
         st.switch_page("pages/3_Recovery_Planner.py")
 
 with rec_btn_c2:
-    if st.button("🧪 Explore What-If Scenarios", use_container_width=True, key="btn_rec_what_if"):
+    if st.button("Explore What-If Scenarios", use_container_width=True, key="btn_rec_what_if"):
         st.switch_page("pages/4_What_If_Simulator.py")
 
 with rec_btn_c3:
     st.markdown("""
     <div style="font-size:0.71rem; color:#94A3B8; padding-top:8px; line-height:1.35;">
-        ⚠️ <b>Human-in-the-Loop Governance Notice:</b> The Command Center provides decision-support recommendations. Plan approval, vendor PO commitments, and ERP pipeline lock-in are executed in the Recovery Planner.
+        <b>Human-in-the-Loop Governance Notice:</b> The Command Center provides decision-support recommendations. Plan approval, vendor PO commitments, and ERP pipeline lock-in are executed in the Recovery Planner.
     </div>
     """, unsafe_allow_html=True)

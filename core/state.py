@@ -6,10 +6,10 @@ Ensures all 6 application pages share unified scenario data, simulation runs, an
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from core.data_loader import (
     get_default_suppliers_df, get_default_inventory_df, get_default_demand_df,
-    initialize_data_files
+    get_default_bom_df, initialize_data_files
 )
 from core.models import DisruptionScenario, RecoveryPlanResult, AuditRecord
 from core.agents.coordinator_agent import CoordinatorAgent
@@ -27,6 +27,9 @@ def init_session_state():
         
     if "demand_df" not in st.session_state:
         st.session_state.demand_df = get_default_demand_df()
+
+    if "bom_df" not in st.session_state:
+        st.session_state.bom_df = get_default_bom_df()
         
     if "active_scenario" not in st.session_state:
         st.session_state.active_scenario = DisruptionScenario(
@@ -39,7 +42,7 @@ def init_session_state():
     if "audit_history" not in st.session_state:
         st.session_state.audit_history = [
             AuditRecord(
-                timestamp=datetime.now().strftime("%Y-%m-%d 08:30:00"),
+                timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 action="SYSTEM_INIT",
                 planner_id="SYSTEM",
                 scenario_summary="Initial 7-day Supplier A disruption scenario loaded.",
@@ -74,6 +77,30 @@ def run_multi_agent_workflow():
         st.session_state.demand_df
     )
     st.session_state.benchmark_results = optimizer.run_benchmark_comparison(st.session_state.active_scenario)
+
+def apply_mock_dataset(dataset_bundle: Dict[str, Any], scenario: Optional[DisruptionScenario] = None, notes: str = ""):
+    """Applies a newly generated mock dataset to global session state and triggers workflow."""
+    if "suppliers_df" in dataset_bundle:
+        st.session_state.suppliers_df = dataset_bundle["suppliers_df"]
+    if "inventory_df" in dataset_bundle:
+        st.session_state.inventory_df = dataset_bundle["inventory_df"]
+    if "demand_df" in dataset_bundle:
+        st.session_state.demand_df = dataset_bundle["demand_df"]
+    if "bom_df" in dataset_bundle:
+        st.session_state.bom_df = dataset_bundle["bom_df"]
+    if "preset_name" in dataset_bundle:
+        st.session_state.active_preset_name = dataset_bundle["preset_name"]
+
+    if scenario is not None:
+        st.session_state.active_scenario = scenario
+
+    run_multi_agent_workflow()
+    
+    record_audit(
+        action="DATASET_GENERATED",
+        planner_id="OPERATOR",
+        notes=notes or f"Generated mock dataset for {dataset_bundle.get('preset_name', 'Custom Scenario')}."
+    )
 
 def record_audit(action: str, planner_id: str, notes: str):
     """Records an action in the immutable audit log."""

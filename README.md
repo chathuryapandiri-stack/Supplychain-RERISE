@@ -6,58 +6,58 @@ Engineered specifically for a **three-echelon network** facing a critical disrup
 
 ---
 
-## 🏛️ System Architecture
+## System Architecture
 
 ResilientAI coordinates **five specialized autonomous agents** sharing an underlying schema and state:
 
 ```
-                               [ Disruption Signal: Supplier A 7-Day Outage ]
-                                                     │
-                 ┌───────────────────┬───────────────┴───────────────┬───────────────────┐
-                 ▼                   ▼                               ▼                   ▼
-         ┌───────────────┐   ┌───────────────┐               ┌───────────────┐   ┌───────────────┐
-         │ Demand Agent  │   │Inventory Agent│               │ Supplier Risk │   │Logistics Agent│
-         │ (Priority     │   │(Runway & Line │               │ (Qualification│   │(Air Expedite  │
-         │  Tiers 1/2/3) │   │ Starvation)   │               │  & Headroom)  │   │ vs Standard)  │
-         └───────┬───────┘   └───────┬───────┘               └───────┬───────┘   └───────┬───────┘
-                 │                   │                               │                   │
-                 └───────────────────┼───────────────┬───────────────┘                   │
-                                     ▼               ▼                                   ▼
-                             [ Specialized Domain Proposals & JSON Action Schemas ]
-                                                     │
-                                                     ▼
-                                      ┌──────────────────────────────┐
-                                      │   Master Coordinator Agent   │
-                                      │  - Conflict Resolution       │
-                                      │  - Constraint Checking       │
-                                      │  - MILP / Solver Synthesis   │
-                                      └──────────────┬───────────────┘
-                                                     │
-                                                     ▼
-                                      ┌──────────────────────────────┐
-                                      │ Human-in-the-Loop Governance │
-                                      │  - What-If Stress Testing    │
-                                      │  - Planner Approval Gating   │
-                                      │  - Immutable Audit History   │
-                                      └──────────────────────────────┘
+                               [ Disruption Signal: Outage Telemetry ]
+                                                 │
+             ┌───────────────────┬───────────────┴───────────────┬───────────────────┐
+             ▼                   ▼                               ▼                   ▼
+     ┌───────────────┐   ┌───────────────┐               ┌───────────────┐   ┌───────────────┐
+     │ Demand Agent  │   │Inventory Agent│               │ Supplier Risk │   │Logistics Agent│
+     │ (Priority     │   │(Runway & Line │               │ (Qualification│   │(Air Expedite  │
+     │  Tiers 1/2/3) │   │ Starvation)   │               │  & Headroom)  │   │ vs Standard)  │
+     └───────┬───────┘   └───────┬───────┘               └───────┬───────┘   └───────┬───────┘
+             │                   │                               │                   │
+             └───────────────────┼───────────────┬───────────────┘                   │
+                                 ▼               ▼                                   ▼
+                         [ Specialized Domain Proposals & JSON Action Schemas ]
+                                                 │
+                                                 ▼
+                                  ┌──────────────────────────────┐
+                                  │   Master Coordinator Agent   │
+                                  │  - Conflict Resolution       │
+                                  │  - Constraint Checking       │
+                                  │  - MILP / Solver Synthesis   │
+                                  └──────────────┬───────────────┘
+                                                 │
+                                                 ▼
+                                  ┌──────────────────────────────┐
+                                  │ Human-in-the-Loop Governance │
+                                  │  - What-If Stress Testing    │
+                                  │  - Planner Approval Gating   │
+                                  │  - Immutable Audit History   │
+                                  └──────────────────────────────┘
 ```
 
 ---
 
-## 📑 The 6 Interconnected Control Room Pages
+## The 6 Interconnected Control Room Pages
 
-1. **📊 Command Center (Main Dashboard)**: Real-time situational awareness, key metrics (available runway, fulfillment %, unmet demand, landed cost), interactive Plotly 3-echelon network diagram (Suppliers ➔ Plant Alpha ➔ Customer DCs), and live disruption telemetry.
-2. **🤖 Agent Workspace (Collaborative AI Analysis)**: Visual DAG pipeline showing sequential and collaborative agent interactions. Interactive telemetry inspector for all 5 specialized agents with inputs, outputs, JSON contracts, and resolved conflicts.
-3. **🎯 Recovery Planner (Actionable Recovery Strategy)**: Actionable purchase and dispatch schedule across backup vendors (Beacon Tech & Crestline), air freight schedules, landed cost decomposition, hard constraint verification badges, and human planner approval/rejection gating.
-4. **🧪 What-If Simulator (Testing Alternative Scenarios)**: Dynamic simulation testing varying outage durations (3-14 days), customer demand surges (-30% to +50%), supplier capacity constraints, and freight modes with side-by-side delta metrics.
-5. **⚖️ Performance & Audit (Tri-Way Benchmarking & Governance)**: Quantitative benchmarking comparing **No-Action** vs. **Rule-Based ERP** vs. **ResilientAI** across 8 core metrics: Fill Rate, Backorders, Total Landed Cost, Recovery Time, and Stockout Duration. Includes an immutable decision history audit trail.
-6. **🗄️ Supply Chain Data (Master Data Repository)**: Transparent data browser for Tier-1 suppliers, on-hand inventory buffers, 14-day customer demand orders, and Bill of Materials (BOM) with search, filtering, and CSV export.
+1. **Command Center (Main Dashboard)**: Real-time situational awareness, key metrics (available runway, fulfillment %, unmet demand, landed cost), interactive Plotly 3-echelon network diagram (Suppliers -> Plant Alpha -> Customer DCs), and live disruption telemetry.
+2. **Agent Workspace (Collaborative AI Analysis)**: Visual DAG pipeline showing sequential and collaborative agent interactions. Interactive telemetry inspector for all 5 specialized agents with inputs, outputs, JSON contracts, and resolved conflicts.
+3. **Recovery Planner (Actionable Recovery Strategy)**: Actionable purchase and dispatch schedule across backup vendors, air freight schedules, landed cost decomposition, hard constraint verification badges, and human planner approval/rejection gating.
+4. **What-If Simulator (Testing Alternative Scenarios)**: Dynamic simulation testing varying outage durations (3-14 days), customer demand surges (-30% to +50%), supplier capacity constraints, and freight modes with side-by-side delta metrics.
+5. **Performance & Audit (Tri-Way Benchmarking & Governance)**: Quantitative benchmarking comparing **No-Action** vs. **Rule-Based ERP** vs. **ResilientAI** across core metrics: Fill Rate, Backorders, Total Landed Cost, Recovery Time, and Stockout Duration. Includes an immutable decision history audit trail.
+6. **Supply Chain Data (Master Data Repository & Scenario Generator)**: Parametric synthetic data generator supporting multiple industry presets (Industrial IoT, Automotive EV, Aerospace Avionics, Medical Devices) and transparent data browser for suppliers, inventory, customer demand, and Bill of Materials (BOM) with CSV export.
 
 ---
 
-## 📊 Tri-Way Benchmark Evaluation
+## Tri-Way Benchmark Evaluation
 
-Tested over the identical 7-day Supplier A outage on a 14-day planning horizon:
+Tested over acute supplier disruption on a 14-day planning horizon:
 
 | Performance Metric | 1. No Action (Passive) | 2. Rule-Based ERP (s, S) | 3. ResilientAI (Multi-Agent) | ResilientAI Advantage |
 | :--- | :---: | :---: | :---: | :---: |
@@ -71,7 +71,7 @@ Tested over the identical 7-day Supplier A outage on a 14-day planning horizon:
 
 ---
 
-## 🚀 Running the Application Locally
+## Running the Application Locally
 
 ### Prerequisites
 - Python 3.10+ (Tested on Python 3.13)

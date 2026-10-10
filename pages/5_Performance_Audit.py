@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 from core.state import init_session_state
 from core.ui_components import apply_custom_css, render_metric_card
 
-st.set_page_config(page_title="Performance & Audit | ResilientAI", page_icon="⚖️", layout="wide")
+st.set_page_config(page_title="Performance & Audit | ResilientAI", layout="wide")
 apply_custom_css()
 init_session_state()
 
@@ -35,7 +35,7 @@ with v2:
     render_metric_card(
         "Cost Savings vs Rule-Based ERP",
         f"${benchmark['cost_savings_vs_rule_based']:,.0f}",
-        "Avoided 4-day stockout via air expediting",
+        "Avoided stockout via proactive expediting",
         "green"
     )
 with v3:
@@ -49,7 +49,7 @@ with v3:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Tri-Way Strategy Benchmark Table
-st.markdown("### 📊 Tri-Way Benchmark Evaluation Matrix")
+st.markdown("### Tri-Way Benchmark Evaluation Matrix")
 st.caption("Evaluating No-Action, Rule-Based Reorder (s, S Heuristic), and ResilientAI over identical disruption conditions.")
 
 # Format dataframe for display
@@ -66,7 +66,7 @@ col_b1, col_b2 = st.columns([1, 1])
 
 with col_b1:
     with st.container(border=True):
-        st.markdown("#### 📈 Fulfillment Rate Across Strategies")
+        st.markdown("#### Fulfillment Rate Across Strategies")
         fig_fill = px.bar(
             comp_df,
             x="Strategy",
@@ -81,7 +81,7 @@ with col_b1:
 
 with col_b2:
     with st.container(border=True):
-        st.markdown("#### 💵 Total Landed Cost & Penalties ($)")
+        st.markdown("#### Total Landed Cost & Penalties ($)")
         fig_cost = px.bar(
             comp_df,
             x="Strategy",
@@ -97,7 +97,7 @@ with col_b2:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Governance & Decision History Audit Trail
-st.markdown("### 📜 Governance & Human Decision History Audit Trail")
+st.markdown("### Governance & Human Decision History Audit Trail")
 st.caption("Immutable log of scenario changes, model runs, planner approvals, and overrides.")
 
 audit_records = st.session_state.audit_history

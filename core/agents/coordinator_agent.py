@@ -58,25 +58,30 @@ class CoordinatorAgent:
             logistics_result["proposal"]
         ]
         
-        # Identify conflicts resolved by coordinator:
+        runout_days = inventory_result["findings"]["runout_days"]
+        stockout_day = inventory_result["findings"]["stockout_day"]
+        total_backup_cap = supplier_result["findings"]["total_backup_daily_capacity"]
+        avg_demand = demand_result["findings"]["avg_daily_demand"]
+
+        # Identify conflicts resolved dynamically by coordinator:
         conflicts_resolved = [
             {
                 "conflict": "Lead Time Mismatch vs Inventory Runout",
                 "agents_involved": ["Inventory Monitoring Agent", "Logistics Agent"],
-                "issue": "Standard shipping requires 4-5 days, but plant buffer starves in 2 days.",
-                "resolution": "Enforce Phase 1 Expedited Air shipping (2-day transit) for initial 1,300 units, averting line stoppage."
+                "issue": f"Standard shipping requires 4-5 days, but plant inventory buffer exhausts in {runout_days} days.",
+                "resolution": f"Enforce Phase 1 Expedited Air shipping (landing Day {stockout_day}) to bridge buffer exhaustion without halting operations."
             },
             {
                 "conflict": "Cost Minimization vs Capacity Bottleneck",
                 "agents_involved": ["Supplier Risk Agent", "Procurement/Cost Heuristics"],
-                "issue": "Lowest cost backup (SUP-B @ $58) has a max capacity of 350 units/day, insufficient for 430/day demand.",
-                "resolution": "Enforce Dual-Sourcing Split: 54% to SUP-B ($58) and 46% to SUP-C ($64) to safely cover total plant demand."
+                "issue": f"No single backup supplier alone can comfortably fulfill {avg_demand} units/day without exceeding local factory headroom.",
+                "resolution": f"Enforce Multi-Sourcing Split across qualified backup suppliers ({total_backup_cap} u/d combined) to cover total demand."
             },
             {
                 "conflict": "Customer Fulfillment vs Material Scarcity",
                 "agents_involved": ["Demand Sensing Agent", "Inventory Monitoring Agent"],
-                "issue": "If any replenishment experiences micro-delays, all customer classes could face uniform stockouts.",
-                "resolution": "Apply strict Tier-1 Rationing priority (100% allocation to Healthcare/Defense customers, mitigating $180/unit penalties)."
+                "issue": "Transitional stockout risk could cause indiscriminate delivery failures across critical customers.",
+                "resolution": "Apply strict Tier-1 Rationing priority (100% allocation to Healthcare and Mission-Critical accounts, eliminating high SLA penalties)."
             }
         ]
         
@@ -96,7 +101,7 @@ class CoordinatorAgent:
             },
             confidence_score=0.96,
             rationale=(
-                f"Reconciled 3 agent conflicts across inventory, vendor capacity, and transit speeds. "
+                f"Reconciled {len(conflicts_resolved)} agent conflicts across inventory runway, vendor capacity, and transit speeds. "
                 f"Generated feasible plan delivering {recovery_plan.fulfillment_rate}% fulfillment rate "
                 f"while satisfying all supplier capacity and SLA constraints."
             ),

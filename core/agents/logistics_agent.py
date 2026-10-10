@@ -15,10 +15,17 @@ class LogisticsAgent:
         self.status = "ACTIVE"
         
     def analyze(self, scenario: DisruptionScenario, inventory_findings: Dict[str, Any]) -> Dict[str, Any]:
-        days_to_stockout = inventory_findings.get("runout_days", 2.0)
-        stockout_day = inventory_findings.get("stockout_day", 3)
+        days_to_stockout = float(inventory_findings.get("runout_days", 2.0))
+        stockout_day = int(inventory_findings.get("stockout_day", 3))
+        disrupted_id = scenario.disrupted_supplier_id
         
-        candidates = self.suppliers_df[self.suppliers_df["supplier_id"].isin(["SUP-B", "SUP-C"])].copy()
+        # Candidates are operational suppliers excluding disrupted
+        candidates = self.suppliers_df[
+            (self.suppliers_df["supplier_id"] != disrupted_id) &
+            (~self.suppliers_df["status"].str.contains("DISRUPTED|SHUTDOWN", case=False, na=False))
+        ].copy()
+        if candidates.empty:
+            candidates = self.suppliers_df[self.suppliers_df["supplier_id"] != disrupted_id].copy()
         
         lane_evaluations = []
         requires_expedite = False
@@ -61,12 +68,12 @@ class LogisticsAgent:
             confidence_score=0.97,
             rationale=(
                 f"Plant inventory depletes on Day {stockout_day}. Standard ground/ocean freight requires 4-5 days "
-                f"(arriving on Day 5 to 6), which guarantees a devastating 2-3 day complete plant shutdown. "
-                f"Emergency Air Expediting (2-day transit) arrives on Day 3 morning, directly averting line starvation. "
+                f"which risks line starvation before standard replenishment arrives. "
+                f"Emergency Air Expediting arrives on Day 3 morning, directly averting line starvation. "
                 f"Recommend immediate Phase 1 Expedited dispatch, followed by Phase 2 Standard freight to control costs."
             ),
-            estimated_cost=1500 * 15.5,  # approximate initial expediting batch
-            trade_off_notes="Expedited air freight adds $9.50-$10.50/unit premium, but prevents $15,000/day idle plant penalties and customer backorders."
+            estimated_cost=1300 * 15.5,
+            trade_off_notes="Expedited air freight adds premium, but prevents $15,000/day idle plant penalties and customer backorders."
         )
         
         return {

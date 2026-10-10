@@ -532,24 +532,28 @@ def render_metric_card(title: str, value: str, subtext: str, status: str = "gree
     </div>
     """, unsafe_allow_html=True)
 
-def build_three_echelon_network_fig(disrupted_supplier: str = "SUP-A", plan=None, suppliers_df=None):
+def build_three_echelon_network_fig(disrupted_supplier: str = "SUP-A", plan=None, suppliers_df=None, inventory_df=None, demand_df=None):
     """
-    Symmetrical, high-contrast Network Map matching the sample reference image.
-    Uses colors from the reference photo:
-    - Neon Cyan (#06B6D4) for Seaports and secondary active routes
-    - Neon Purple (#A855F7) for Airport and primary expedite recovery routes
-    - Red (#EF4444) for Disrupted Outage routes
-    - Amber (#F59E0B) for Assembly Manufacturing Plant
-    - Emerald Green (#10B981) for Customer Fulfillment DCs
+    Symmetrical, high-contrast Network Map matching the enterprise Control Tower architecture.
+    Dynamically positions active suppliers, manufacturing assembly, and downstream distribution centers.
     """
-    alloc_b = 0
-    alloc_c = 0
+    allocs_by_sup = {}
+    air_by_sup = {}
     if plan and hasattr(plan, "allocations"):
         for a in plan.allocations:
-            if a.supplier_id == "SUP-B":
-                alloc_b += a.allocated_units
-            elif a.supplier_id == "SUP-C":
-                alloc_c += a.allocated_units
+            allocs_by_sup[a.supplier_id] = allocs_by_sup.get(a.supplier_id, 0) + a.allocated_units
+            if "EXPEDITED" in a.shipping_mode:
+                air_by_sup[a.supplier_id] = air_by_sup.get(a.supplier_id, 0) + a.allocated_units
+
+    # Dynamic runway calculation
+    runway_val = 2.08
+    if inventory_df is not None and demand_df is not None:
+        try:
+            curr = float(inventory_df.iloc[0]["current_stock"])
+            daily = float(demand_df["demand_units"].sum()) / max(1, demand_df["day"].nunique())
+            runway_val = round(curr / max(1.0, daily), 2)
+        except Exception:
+            runway_val = 2.08
 
     fig = go.Figure()
 
@@ -567,73 +571,120 @@ def build_three_echelon_network_fig(disrupted_supplier: str = "SUP-A", plan=None
             hoverinfo="none", showlegend=False
         ))
 
-    # Connection Routes
-    # 1. Disrupted Route: Apex (SUP-A) -> Plant Alpha (Red dashed line)
-    fig.add_trace(go.Scatter(
-        x=[0.14, 0.50], y=[0.76, 0.50],
-        mode="lines",
-        line=dict(color="#EF4444", width=2.2, dash="dash"),
-        hoverinfo="text",
-        hovertext="<b>PRIMARY VENDOR: APEX (SUP-A) ➔ PLANT ALPHA</b><br>Status: DISRUPTED (7-Day Complete Shutdown)<br>Current Inbound: 0 Units/Day",
-        showlegend=False
-    ))
+    # Extract suppliers list from suppliers_df
+    sup_list = []
+    if suppliers_df is not None and not suppliers_df.empty:
+        t1 = suppliers_df[suppliers_df["tier"] == 1]
+        sup_list = t1.to_dict(orient="records") if not t1.empty else suppliers_df.to_dict(orient="records")
+    else:
+        sup_list = [
+            {"supplier_id": "SUP-A", "name": "Apex Microelectronics (Primary)", "daily_capacity": 500},
+            {"supplier_id": "SUP-B", "name": "Beacon Tech Solutions (Backup 1)", "daily_capacity": 350},
+            {"supplier_id": "SUP-C", "name": "Crestline Components (Backup 2)", "daily_capacity": 300}
+        ]
 
-    # 2. Air Expedited Recovery Route: Beacon (SUP-B) -> Plant Alpha (Purple solid line matching reference)
-    fig.add_trace(go.Scatter(
-        x=[0.14, 0.50], y=[0.50, 0.50],
-        mode="lines",
-        line=dict(color="#A855F7", width=3.8),
-        hoverinfo="text",
-        hovertext=f"<b>EXPEDITED AIR ROUTE: BEACON TECH (SUP-B) ✈️ PLANT ALPHA</b><br>Mode: Air Expedite (700u) + Ground (1,050u)<br>Allocated: {alloc_b:,} Units (Day 3 Arrival)",
-        showlegend=False
-    ))
+    # Assign vertical positions to suppliers
+    n_sup = len(sup_list)
+    y_coords = np.linspace(0.76, 0.24, n_sup) if n_sup > 1 else [0.50]
+    
+    nodes = []
+    for idx, s in enumerate(sup_list):
+        sid = s["supplier_id"]
+        sname = s.get("name", sid).split("(")[0].strip()
+        y_pos = y_coords[idx]
+        is_disrupted = (sid == disrupted_supplier)
+        alloc_qty = allocs_by_sup.get(sid, 0)
+        
+        if is_disrupted:
+            # Disrupted Supplier Route to Plant (Red dashed line)
+            fig.add_trace(go.Scatter(
+                x=[0.14, 0.50], y=[y_pos, 0.50],
+                mode="lines",
+                line=dict(color="#EF4444", width=2.4, dash="dash"),
+                hoverinfo="text",
+                hovertext=f"<b>PRIMARY VENDOR: {sname.upper()} ({sid}) -> PLANT ALPHA</b><br>Status: DISRUPTED OUTAGE<br>Flow: 0 Units/Day",
+                showlegend=False
+            ))
+            nodes.append({
+                "id": sid,
+                "label": f"{sname} ({sid})<br><span style='color:#EF4444;'>SHUTDOWN [0 u]</span>",
+                "x": 0.14, "y": y_pos, "sym": "circle-x",
+                "color": "#1C141E", "border": "#EF4444", "size": 22,
+                "desc": f"Disrupted Supplier: {sname} (Offline)"
+            })
+        else:
+            # Active Backup Route to Plant
+            has_air = air_by_sup.get(sid, 0) > 0
+            route_color = "#A855F7" if has_air else "#06B6D4"
+            route_width = 3.6 if alloc_qty > 0 else 1.8
+            dash_style = "solid" if alloc_qty > 0 else "dot"
+            mode_desc = "Air Expedite + Ground" if has_air else "Standard Freight"
+            
+            fig.add_trace(go.Scatter(
+                x=[0.14, 0.50], y=[y_pos, 0.50],
+                mode="lines",
+                line=dict(color=route_color, width=route_width, dash=dash_style),
+                hoverinfo="text",
+                hovertext=f"<b>BACKUP ROUTE: {sname.upper()} ({sid}) -> PLANT ALPHA</b><br>Mode: {mode_desc}<br>Allocated: {alloc_qty:,} Units",
+                showlegend=False
+            ))
+            alloc_tag = f"<span style='color:{route_color};'>ALLOC [{alloc_qty:,} u]</span>" if alloc_qty > 0 else "<span style='color:#64748B;'>STANDBY</span>"
+            nodes.append({
+                "id": sid,
+                "label": f"{sname} ({sid})<br>{alloc_tag}",
+                "x": 0.14, "y": y_pos, "sym": "circle",
+                "color": "#1A1426" if has_air else "#121F29",
+                "border": route_color, "size": 22,
+                "desc": f"Alternative Supplier: {sname} ({s.get('daily_capacity', 300)} u/d capacity)"
+            })
 
-    # 3. Dual-Source Recovery Route: Crestline (SUP-C) -> Plant Alpha (Cyan solid line matching reference)
-    fig.add_trace(go.Scatter(
-        x=[0.14, 0.50], y=[0.24, 0.50],
-        mode="lines",
-        line=dict(color="#06B6D4", width=3.5),
-        hoverinfo="text",
-        hovertext=f"<b>DUAL-SOURCE ROUTE: CRESTLINE (SUP-C) ✈️ PLANT ALPHA</b><br>Mode: Air Expedite (600u) + Ground (900u)<br>Allocated: {alloc_c:,} Units (Day 3 Arrival)",
-        showlegend=False
-    ))
-
-    # 4. Outbound Fulfillment: Plant Alpha -> DC East (Healthcare 100%)
+    # Outbound Fulfillment: Plant Alpha -> DC East (Tier 1 Priority 100%)
     fig.add_trace(go.Scatter(
         x=[0.50, 0.86], y=[0.50, 0.72],
         mode="lines",
         line=dict(color="#10B981", width=2.8),
         hoverinfo="text",
-        hovertext="<b>OUTBOUND: PLANT ALPHA ➔ DC EAST</b><br>Tier-1 Healthcare & Defense: 100% Guaranteed SLA<br>Zero Backorders",
+        hovertext="<b>OUTBOUND: PLANT ALPHA -> DC EAST</b><br>Tier-1 Healthcare & Defense: 100% Guaranteed SLA<br>Zero Backorders",
         showlegend=False
     ))
 
-    # 5. Outbound Fulfillment: Plant Alpha -> DC West (Commercial 94%)
+    # Outbound Fulfillment: Plant Alpha -> DC West (Commercial Tier 2 & 3)
+    fill_rate_display = f"{plan.fulfillment_rate:.1f}%" if plan else "94.2%"
     fig.add_trace(go.Scatter(
         x=[0.50, 0.86], y=[0.50, 0.28],
         mode="lines",
         line=dict(color="#64748B", width=2.2),
         hoverinfo="text",
-        hovertext="<b>OUTBOUND: PLANT ALPHA ➔ DC WEST</b><br>Tier-2 & Tier-3 Fulfillment: 94.2% Service Level",
+        hovertext=f"<b>OUTBOUND: PLANT ALPHA -> DC WEST</b><br>Tier-2 & Tier-3 Fulfillment: {fill_rate_display} Service Level",
         showlegend=False
     ))
 
-    # Symmetrical Node Layout
-    nodes = [
-        # Echelon 1: Suppliers
-        {"id": "SUP-A", "label": "Apex Micro (SUP-A)<br><span style='color:#EF4444;'>SHUTDOWN [0 u]</span>", "x": 0.14, "y": 0.76, "sym": "circle-x", "color": "#1C141E", "border": "#EF4444", "size": 22, "desc": "Tier-1 Critical Chipset (Offline)"},
-        {"id": "SUP-B", "label": f"Beacon Tech (SUP-B)<br><span style='color:#A855F7;'>AIR ALLOC [{alloc_b:,} u]</span>", "x": 0.14, "y": 0.50, "sym": "circle", "color": "#1A1426", "border": "#A855F7", "size": 22, "desc": "Qualified Airport Backup Hub (350 u/d)"},
-        {"id": "SUP-C", "label": f"Crestline (SUP-C)<br><span style='color:#06B6D4;'>AIR ALLOC [{alloc_c:,} u]</span>", "x": 0.14, "y": 0.24, "sym": "circle", "color": "#121F29", "border": "#06B6D4", "size": 22, "desc": "Qualified Seaport/Air Backup Hub (300 u/d)"},
-        
-        # Echelon 2: Central Assembly Hub
-        {"id": "PLANT-A", "label": "Assembly Plant Alpha<br><span style='color:#F59E0B;'>RUNWAY: 2.08 DAYS</span>", "x": 0.50, "y": 0.50, "sym": "square", "color": "#201A15", "border": "#F59E0B", "size": 26, "desc": "Central Manufacturing Facility (450 u/d capacity)"},
-        
-        # Echelon 3: Downstream Distribution
-        {"id": "DC-EAST", "label": "DC East (Regional Hub)<br><span style='color:#10B981;'>TIER-1 SLA: 100%</span>", "x": 0.86, "y": 0.72, "sym": "diamond", "color": "#13211D", "border": "#10B981", "size": 22, "desc": "Healthcare & Critical Infrastructure Fulfillment"},
-        {"id": "DC-WEST", "label": "DC West (Regional Hub)<br><span style='color:#94A3B8;'>TIER-2/3 SLA: 94.2%</span>", "x": 0.86, "y": 0.28, "sym": "diamond", "color": "#151B26", "border": "#64748B", "size": 22, "desc": "Enterprise Telecom & Retail Fulfillment"}
-    ]
-    ndf = pd.DataFrame(nodes)
+    # Plant Alpha and Distribution Hub Nodes
+    nodes.extend([
+        {
+            "id": "PLANT-A",
+            "label": f"Assembly Plant Alpha<br><span style='color:#F59E0B;'>RUNWAY: {runway_val} DAYS</span>",
+            "x": 0.50, "y": 0.50, "sym": "square",
+            "color": "#201A15", "border": "#F59E0B", "size": 26,
+            "desc": "Central Manufacturing Facility"
+        },
+        {
+            "id": "DC-EAST",
+            "label": "DC East (Regional Hub)<br><span style='color:#10B981;'>TIER-1 SLA: 100%</span>",
+            "x": 0.86, "y": 0.72, "sym": "diamond",
+            "color": "#13211D", "border": "#10B981", "size": 22,
+            "desc": "Healthcare & Critical Infrastructure Fulfillment"
+        },
+        {
+            "id": "DC-WEST",
+            "label": f"DC West (Regional Hub)<br><span style='color:#94A3B8;'>SERVICE: {fill_rate_display}</span>",
+            "x": 0.86, "y": 0.28, "sym": "diamond",
+            "color": "#151B26", "border": "#64748B", "size": 22,
+            "desc": "Enterprise Telecom & Commercial Fulfillment"
+        }
+    ])
 
+    ndf = pd.DataFrame(nodes)
     fig.add_trace(go.Scatter(
         x=ndf["x"], y=ndf["y"],
         mode="markers+text",
@@ -659,7 +710,7 @@ def build_three_echelon_network_fig(disrupted_supplier: str = "SUP-A", plan=None
     # Symmetrical Legend Bar
     fig.add_annotation(
         x=0.5, y=-0.04,
-        text="● <span style='color:#EF4444;'>Disrupted Lane (0 Flow)</span> &nbsp;&nbsp;|&nbsp;&nbsp; ● <span style='color:#A855F7;'>Air Expedited Route (Day 3)</span> &nbsp;&nbsp;|&nbsp;&nbsp; ● <span style='color:#06B6D4;'>Dual-Source Route</span> &nbsp;&nbsp;|&nbsp;&nbsp; ■ <span style='color:#F59E0B;'>Assembly Facility</span> &nbsp;&nbsp;|&nbsp;&nbsp; ◆ <span style='color:#10B981;'>DC Hub</span>",
+        text="● <span style='color:#EF4444;'>Disrupted Lane (0 Flow)</span> &nbsp;&nbsp;|&nbsp;&nbsp; ● <span style='color:#A855F7;'>Air Expedited Route</span> &nbsp;&nbsp;|&nbsp;&nbsp; ● <span style='color:#06B6D4;'>Dual-Source Standard</span> &nbsp;&nbsp;|&nbsp;&nbsp; ■ <span style='color:#F59E0B;'>Assembly Facility</span> &nbsp;&nbsp;|&nbsp;&nbsp; ◆ <span style='color:#10B981;'>DC Hub</span>",
         showarrow=False,
         font=dict(color="#94A3B8", size=9.5, family="Inter"),
         xref="paper", yref="paper"
@@ -676,22 +727,47 @@ def build_three_echelon_network_fig(disrupted_supplier: str = "SUP-A", plan=None
     )
     return fig
 
-def build_enterprise_timeline_fig():
+def build_enterprise_timeline_fig(plan=None, scenario=None, inventory_df=None, demand_df=None):
     """
-    Symmetrical Waterfall Gantt Chart matching the reference image bottom center panel.
-    Shows duration bars (7 days, 2 days, 2 days, 4 days, 5 days) with exact matching colors:
-    - Coral Red for Outage
-    - Neon Purple for Air Expedite
-    - Neon Cyan for Secondary Air Expedite
-    - Emerald Green for Standard Freight
+    Symmetrical Gantt Chart dynamically rendering outage windows, buffer exhaustion point,
+    and actual supplier replenishment arrivals.
     """
+    disruption_days = scenario.duration_days if scenario else 7
+    disrupted_id = scenario.disrupted_supplier_id if scenario else "SUP-A"
+    
+    runout_val = 2.08
+    if inventory_df is not None and demand_df is not None:
+        try:
+            curr = float(inventory_df.iloc[0]["current_stock"])
+            daily = float(demand_df["demand_units"].sum()) / max(1, demand_df["day"].nunique())
+            runout_val = round(curr / max(1.0, daily), 2)
+        except Exception:
+            runout_val = 2.08
+
     lanes = [
-        {"Lane": "Apex (SUP-A) Outage", "Start": 1, "Duration": 7, "Color": "#EF4444", "Label": "7 Days (Total Outage)"},
-        {"Lane": "Beacon (SUP-B) Air", "Start": 1, "Duration": 2, "Color": "#A855F7", "Label": "2 Days (700u Air -> Lands Day 3)"},
-        {"Lane": "Crestline (SUP-C) Air", "Start": 1, "Duration": 2, "Color": "#06B6D4", "Label": "2 Days (600u Air -> Lands Day 3)"},
-        {"Lane": "Crestline (SUP-C) Std", "Start": 1, "Duration": 4, "Color": "#10B981", "Label": "4 Days (900u Std -> Lands Day 5)"},
-        {"Lane": "Beacon (SUP-B) Std", "Start": 2, "Duration": 5, "Color": "#3B82F6", "Label": "5 Days (1,050u Std -> Lands Day 7)"},
+        {"Lane": f"Primary ({disrupted_id}) Outage", "Start": 1, "Duration": disruption_days, "Color": "#EF4444", "Label": f"{disruption_days} Days (Outage)"}
     ]
+
+    color_palette = ["#A855F7", "#06B6D4", "#10B981", "#3B82F6", "#F59E0B"]
+    if plan and hasattr(plan, "allocations") and plan.allocations:
+        for idx, a in enumerate(plan.allocations):
+            mode_tag = "Air" if "EXPEDITED" in a.shipping_mode else "Std"
+            c = "#A855F7" if "EXPEDITED" in a.shipping_mode else color_palette[(idx + 1) % len(color_palette)]
+            start_day = 1 if "EXPEDITED" in a.shipping_mode else 1
+            lanes.append({
+                "Lane": f"{a.supplier_name.split()[0]} ({a.supplier_id}) {mode_tag}",
+                "Start": start_day,
+                "Duration": a.lead_time_days,
+                "Color": c,
+                "Label": f"{a.lead_time_days}d ({a.allocated_units:,}u -> Lands Day {a.arrival_day})"
+            })
+    else:
+        lanes.extend([
+            {"Lane": "Beacon (SUP-B) Air", "Start": 1, "Duration": 2, "Color": "#A855F7", "Label": "2 Days (700u Air -> Day 3)"},
+            {"Lane": "Crestline (SUP-C) Air", "Start": 1, "Duration": 2, "Color": "#06B6D4", "Label": "2 Days (600u Air -> Day 3)"},
+            {"Lane": "Crestline (SUP-C) Std", "Start": 1, "Duration": 4, "Color": "#10B981", "Label": "4 Days (900u Std -> Day 5)"},
+            {"Lane": "Beacon (SUP-B) Std", "Start": 1, "Duration": 5, "Color": "#3B82F6", "Label": "5 Days (1,050u Std -> Day 6)"}
+        ])
 
     fig = go.Figure()
 
@@ -715,16 +791,16 @@ def build_enterprise_timeline_fig():
             showlegend=False
         ))
 
-    # Buffer exhaustion vertical line at Day 2.08
+    # Buffer exhaustion vertical line
     fig.add_vline(
-        x=2.08, line_dash="dash", line_color="#EF4444", line_width=1.8,
-        annotation_text="Buffer Exhaustion (Day 2.08)",
+        x=runout_val, line_dash="dash", line_color="#EF4444", line_width=1.8,
+        annotation_text=f"Buffer Exhaustion (Day {runout_val})",
         annotation_position="top right",
         annotation_font=dict(color="#EF4444", size=8.5, family="JetBrains Mono")
     )
 
     fig.update_layout(
-        height=180,
+        height=190,
         autosize=True,
         margin=dict(l=10, r=15, t=10, b=25),
         xaxis=dict(
@@ -746,13 +822,23 @@ def build_enterprise_timeline_fig():
     )
     return fig
 
-def build_enterprise_cost_donut_fig(fill_rate=95.7, total_cost=266361):
+def build_enterprise_cost_donut_fig(fill_rate=95.7, total_cost=266361, plan=None):
     """
-    Symmetrical Category Donut Chart matching the top-right widget in the reference image.
-    Uses reference photo colors: Neon Cyan, Neon Purple, Emerald Green, Coral Red.
+    Symmetrical Category Donut Chart dynamically displaying landed cost breakdown.
     """
-    labels = ["Material PO Spend", "Expedited Freight", "Buffer Holding", "Backorder Penalties"]
-    values = [187700, 43650, 3250, 31761]
+    if plan and hasattr(plan, "total_material_cost"):
+        labels = ["Material PO Spend", "Expedited Freight", "Buffer Holding", "Backorder Penalties"]
+        values = [
+            max(0, plan.total_material_cost),
+            max(0, plan.total_freight_cost),
+            max(0, plan.total_holding_cost),
+            max(0, plan.total_backorder_penalty)
+        ]
+        total_cost = plan.total_landed_cost
+    else:
+        labels = ["Material PO Spend", "Expedited Freight", "Buffer Holding", "Backorder Penalties"]
+        values = [187700, 43650, 3250, 31761]
+
     colors = ["#A855F7", "#06B6D4", "#10B981", "#EF4444"]
 
     fig = go.Figure(data=[go.Pie(
@@ -784,10 +870,14 @@ def build_enterprise_cost_donut_fig(fill_rate=95.7, total_cost=266361):
     )
     return fig
 
-def build_sparkline_risk_fig():
-    """Neon area sparkline matching 'NO. OF MISSIONS AT RISK' widget in sample image."""
+def build_sparkline_risk_fig(inventory_df=None, demand_df=None, plan=None):
+    """Area sparkline dynamically showing risk intensity across planning horizon."""
     x = list(range(1, 15))
-    y = [1, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    if plan and hasattr(plan, "stockout_duration_days"):
+        stk = plan.stockout_duration_days
+        y = [max(0, stk - i) if i < 4 else 0 for i in range(14)]
+    else:
+        y = [1, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -810,12 +900,19 @@ def build_sparkline_risk_fig():
     )
     return fig
 
-def build_delivery_prediction_bar_fig():
-    """Slender vertical dual-bar chart matching 'Delivery Prediction Over Time' widget."""
+def build_delivery_prediction_bar_fig(demand_df=None, plan=None):
+    """Slender vertical dual-bar chart showing dynamic requested vs fulfilled demand."""
     days = [f"D{i}" for i in range(1, 15)]
-    requested = [430, 425, 440, 435, 450, 420, 430, 445, 430, 420, 435, 440, 425, 430]
-    predicted = [430, 425, 440, 435, 450, 420, 430, 445, 430, 420, 435, 440, 425, 430]
-    predicted[2] = 200  # Day 3 small transitional dip before air cargo lands
+    if demand_df is not None and not demand_df.empty:
+        daily_req = demand_df.groupby("day")["demand_units"].sum().to_dict()
+        requested = [daily_req.get(d, 430) for d in range(1, 15)]
+    else:
+        requested = [430, 425, 440, 435, 450, 420, 430, 445, 430, 420, 435, 440, 425, 430]
+        
+    predicted = list(requested)
+    # Reflect transitional stockout dip if any
+    if plan and hasattr(plan, "stockout_duration_days") and plan.stockout_duration_days > 0:
+        predicted[2] = max(50, int(predicted[2] * 0.45))
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
